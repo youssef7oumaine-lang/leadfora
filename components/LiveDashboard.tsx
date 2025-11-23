@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 
 // --- Mock Data Generators ---
@@ -140,7 +141,7 @@ const LiveDashboard: React.FC = () => {
         {/* CENTER: System Logs (5 Cols on Desktop - Widened) */}
         <div className="md:col-span-5 flex flex-col bg-[#0A0F1E] border border-cyan-500/20 rounded-xl overflow-hidden h-full">
           <div className="px-4 py-3 bg-slate-900/50 border-b border-cyan-500/10 flex justify-between items-center">
-            <span className="text-[10px] font-mono uppercase text-slate-400 tracking-widest"> > SYSTEM LOGS</span>
+            <span className="text-[10px] font-mono uppercase text-slate-400 tracking-widest"> &gt; SYSTEM LOGS</span>
             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
           </div>
           <div ref={scrollRef} className="flex-1 p-4 overflow-y-auto flex flex-col justify-start gap-3 relative no-scrollbar">
@@ -161,7 +162,7 @@ const LiveDashboard: React.FC = () => {
         <div className="md:col-span-4 flex flex-col bg-cyan-500/5 border border-cyan-500/20 rounded-xl p-6 relative overflow-hidden h-full">
           <div className="flex justify-between items-end mb-4 relative z-10">
             <div>
-              <div className="text-[10px] font-mono uppercase text-slate-400 mb-1"> > LEAD VOLUME (24H)</div>
+              <div className="text-[10px] font-mono uppercase text-slate-400 mb-1"> &gt; LEAD VOLUME (24H)</div>
               <div className="text-3xl font-bold text-white">{Math.floor(chartPoints[chartPoints.length - 1])} <span className="text-sm font-normal text-slate-400">leads/hr</span></div>
             </div>
           </div>
