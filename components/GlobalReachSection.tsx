@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 
 interface GlobalReachSectionProps {
@@ -79,10 +80,7 @@ const GlobalReachSection: React.FC<GlobalReachSectionProps> = ({ onOpenModal }) 
     <section 
       id="languages"
       ref={sectionRef}
-      className="relative w-full py-24 px-4 overflow-hidden border-t border-slate-200 scroll-mt-28"
-      style={{
-        background: 'linear-gradient(to bottom, #F8FAFC 0%, #E2E8F0 100%)'
-      }}
+      className="relative w-full py-24 px-4 overflow-hidden border-t border-slate-200 scroll-mt-28 bg-[#F8FAFC]"
     >
       <style>{styles}</style>
 
@@ -122,7 +120,7 @@ const GlobalReachSection: React.FC<GlobalReachSectionProps> = ({ onOpenModal }) 
 
         {/* Dual Marquees */}
         <div className="relative py-10 space-y-6">
-           {/* Side Fade Overlays */}
+           {/* Side Fade Overlays - Color Matched to Section BG #F8FAFC */}
            <div className="absolute left-0 top-0 bottom-0 w-20 md:w-40 bg-gradient-to-r from-[#F8FAFC] to-transparent z-20 pointer-events-none" />
            <div className="absolute right-0 top-0 bottom-0 w-20 md:w-40 bg-gradient-to-l from-[#F8FAFC] to-transparent z-20 pointer-events-none" />
 
