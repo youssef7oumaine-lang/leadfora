@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 
 interface LeadCaptureModalProps {
@@ -6,24 +7,69 @@ interface LeadCaptureModalProps {
 }
 
 const LeadCaptureModal: React.FC<LeadCaptureModalProps> = ({ isOpen, onClose }) => {
-  const [formState, setFormState] = useState<'idle' | 'submitting' | 'success'>('idle');
+  const [formState, setFormState] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: ''
+  });
 
   // Reset form when modal closes/opens
   useEffect(() => {
     if (isOpen) {
       setFormState('idle');
+      setErrorMessage('');
+      setFormData({ name: '', email: '', phone: '' });
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormState('submitting');
-    // Simulate network request
-    setTimeout(() => {
-      setFormState('success');
-    }, 1500);
+    setErrorMessage('');
+
+    try {
+      const response = await fetch('https://mistakable-danyell-limpidly.ngrok-free.dev/webhook/187f55c9-e245-44de-90d0-779b073c86f8', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          source: "LeadFora Website",
+          date: new Date().toISOString()
+        }),
+      });
+
+      if (response.ok) {
+        setFormState('success');
+        // Clear form data
+        setFormData({ name: '', email: '', phone: '' });
+        // Close modal after delay
+        setTimeout(() => {
+          onClose();
+        }, 2000);
+      } else {
+        throw new Error('Network response was not ok');
+      }
+    } catch (error) {
+      console.error("Submission Error:", error);
+      setFormState('error');
+      setErrorMessage('Connection failed, please try again.');
+    }
   };
 
   return (
@@ -66,8 +112,8 @@ const LeadCaptureModal: React.FC<LeadCaptureModalProps> = ({ isOpen, onClose }) 
                 </svg>
               </div>
             </div>
-            <h3 className="text-2xl font-bold text-slate-900 mb-2">Calling you now...</h3>
-            <p className="text-slate-500 font-medium">Watch your phone!</p>
+            <h3 className="text-2xl font-bold text-slate-900 mb-2">Received!</h3>
+            <p className="text-slate-500 font-medium">Our AI agent will call you shortly.</p>
           </div>
         ) : (
           // Form State
@@ -82,6 +128,9 @@ const LeadCaptureModal: React.FC<LeadCaptureModalProps> = ({ isOpen, onClose }) 
               <div className="group">
                 <input 
                   type="text" 
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
                   placeholder="Full Name" 
                   required
                   className="w-full px-4 py-3 rounded-lg bg-slate-100 border-2 border-transparent text-slate-900 placeholder-gray-400 outline-none transition-all duration-300 focus:bg-white focus:border-[#00D9FF] focus:shadow-[0_0_15px_rgba(0,217,255,0.2)]"
@@ -92,6 +141,9 @@ const LeadCaptureModal: React.FC<LeadCaptureModalProps> = ({ isOpen, onClose }) 
               <div className="group">
                 <input 
                   type="email" 
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
                   placeholder="Email Address" 
                   required
                   className="w-full px-4 py-3 rounded-lg bg-slate-100 border-2 border-transparent text-slate-900 placeholder-gray-400 outline-none transition-all duration-300 focus:bg-white focus:border-[#00D9FF] focus:shadow-[0_0_15px_rgba(0,217,255,0.2)]"
@@ -102,23 +154,43 @@ const LeadCaptureModal: React.FC<LeadCaptureModalProps> = ({ isOpen, onClose }) 
               <div className="group">
                 <input 
                   type="tel" 
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
                   placeholder="Phone Number (+1 ...)" 
                   required
                   className="w-full px-4 py-3 rounded-lg bg-slate-100 border-2 border-transparent text-slate-900 placeholder-gray-400 outline-none transition-all duration-300 focus:bg-white focus:border-[#00D9FF] focus:shadow-[0_0_15px_rgba(0,217,255,0.2)]"
                 />
               </div>
 
+              {/* Error Message */}
+              {formState === 'error' && (
+                <div className="text-red-500 text-sm font-medium text-center bg-red-50 p-2 rounded-lg border border-red-100">
+                  {errorMessage}
+                </div>
+              )}
+
               {/* Submit Button */}
               <button 
                 type="submit"
                 disabled={formState === 'submitting'}
-                className="w-full mt-2 py-3.5 rounded-full font-bold text-white text-base transition-all duration-300 hover:scale-[1.02] hover:brightness-110 focus:outline-none disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full mt-2 py-3.5 rounded-full font-bold text-white text-base transition-all duration-300 hover:scale-[1.02] hover:brightness-110 focus:outline-none disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 style={{
                   background: 'linear-gradient(90deg, #00D9FF 0%, #00FF41 100%)',
                   boxShadow: '0 0 20px rgba(0, 255, 65, 0.4)'
                 }}
               >
-                {formState === 'submitting' ? 'CONNECTING...' : 'CALL ME NOW ⚡'}
+                {formState === 'submitting' ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Processing...
+                  </>
+                ) : (
+                  'CALL ME NOW ⚡'
+                )}
               </button>
             </form>
           </>
