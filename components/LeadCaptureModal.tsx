@@ -58,6 +58,7 @@ const LeadCaptureModal: React.FC<LeadCaptureModalProps> = ({ isOpen, onClose, on
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
+            keepalive: true
         }).catch(err => console.error("Background submission failed", err));
 
         // Reset state silently
@@ -74,6 +75,7 @@ const LeadCaptureModal: React.FC<LeadCaptureModalProps> = ({ isOpen, onClose, on
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
+        keepalive: true
       });
 
       if (response.ok) {

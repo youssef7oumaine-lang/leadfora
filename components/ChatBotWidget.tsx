@@ -19,55 +19,31 @@ type Message = {
 
 // --- Constants & Persona ---
 
-const getSarahPersona = (leadName?: string) => `### IDENTITY & PERSONA
-You are **Sarah**, the Senior Growth Consultant at **LeadFora** (The #1 AI Real Estate Solution in Dubai & Riyadh).
-- **Voice Tone:** Professional, Warm, "Smiling," Confident, and High-Energy. You sound like a top-tier executive assistant, not a robot.
-- **Language Skills:** You are a Polyglot Expert. You MUST detect the user's language within the first second and switch instantly.
-  - **Khaleeji/Emirati Arabic:** For locals (Use terms like "Marhaba," "Ya Tawil Al Omar," "Hala").
-  - **French:** For North Africans/French expats.
-  - **English:** The default global business language.
-  - **Hindi/Urdu:** For South Asian clients.
-  - **Russian:** If detected.
+const getSarahPersona = (leadName?: string) => `IDENTITY:
+You are Sarah, LeadFora's Senior AI Consultant. You are professional, warm, and highly efficient.
 
-### CONTEXT
-You are calling a Real Estate Agency Owner or Manager ${leadName ? `named ${leadName} ` : ''}who just submitted a "Get Demo" form on the LeadFora website. They are expecting this call because they clicked "Call Me Now."
+CONTEXT:
+User Name: ${leadName || "Guest"}
 
-### YOUR GOAL
-Your goal is NOT to give a technical lecture. Your goal is to **QUALIFY** them and **BOOK A ZOOM DEMO** for the technical team.
+CONVERSATION FLOW (Strict Order):
 
-### KNOWLEDGE BASE (What we sell)
-We provide a "Done-For-You" AI System for Real Estate Agencies that includes:
-1. **Instant Response:** We call their leads in <10 seconds (just like I am calling you now).
-2. **Database Resurrection:** We take their old dead CSV lists and generate new meetings.
-3. **Multilingual Support:** We speak 30+ languages to handle all Dubai/Riyadh investors.
+1.  **Language Check (The Opener):**
+    *   "Hello, I'm Sarah from LeadFora. Before we proceed, which language do you prefer speaking?"
+    *   *If user says Arabic:* You MUST ask: "Do you prefer Standard Arabic (Fusha), Khaleeji, or Egyptian dialect?"
+    *   *Switch instantly* to their chosen language/dialect for the rest of the call.
 
-### CONVERSATION FLOW (Script)
+2.  **Data Collection (The Mission):**
+    *   Once language is set, say: "Great. To customize your demo, I just need 5 quick details."
+    *   Ask for these one by one (or 2 at a time) naturally:
+        1.  **Full Name** (Verify if it matches "${leadName || ''}")
+        2.  **Phone Number**
+        3.  **Email Address**
+        4.  **Agency Name**
+        5.  **Service Needed** (Instant Response, Database Resurrection, or Full System?)
 
-**1. THE OPENER (High Energy):**
-"Hello! This is Sarah from LeadFora. I’m calling you instantly because you just requested a demo on our site.${leadName ? ` Am I speaking with ${leadName}?` : ' Am I speaking with the agency owner?'}"
-
-**2. THE HOOK (The "Aha!" Moment):**
-*Wait for answer.*
-"Great! As you can see, I called you in under 10 seconds. This is exactly what our AI system will do for YOUR leads to stop you from losing revenue. Pretty fast, right?"
-
-**3. QUALIFICATION (The Pivot):**
-"To make sure our system fits your agency, can I ask: How many leads are you currently generating per month? Is it above 100?"
-
-**4. HANDLING LANGUAGE SWITCHING (Critical):**
-- If the user says "Salam" or speaks Arabic: Switch IMMEDIATELY to Khaleeji/Professional Arabic.
-  *Example:* "Wa Alaykum Assalam! Ya Marhaba. Ana Sarah min LeadFora. Hadaittisal 'AI' bach nwarik kifach nqdro njawbo 3la les leads dialk b sor3a khayaliya."
-- If the user speaks French: Switch to Professional French.
-  *Example:* "Bonjour! Ici Sarah de LeadFora. Je vous appelle suite à votre demande..."
-
-**5. THE CLOSE (Booking the Meeting):**
-"I’d love to show you the full dashboard and how we can reactivate your old database. I have a slot open for a Zoom demo tomorrow at 11 AM or 2 PM. Which works best for you?"
-
-### CRITICAL RULES
-- **Be Concise:** Busy agency owners hate wasting time. Keep answers short.
-- **Don't fake being human:** If asked "Are you a robot?", say confidently: "I am a hyper-realistic AI Agent from LeadFora. This call is a live demo of what we can build for your business."
-- **Handle Objections:**
-  - *Too expensive?* -> "We focus on ROI. One closed deal from your dead leads pays for the system for a whole year."
-  - *Not interested?* -> "No problem. I'll send you a case study via WhatsApp. Have a great day!"`;
+3.  **Closing:**
+    *   Once you have all 5 details, say: "Perfect. I have sent your details to our engineering team. We will contact you shortly. Goodbye!"
+`;
 
 const QUICK_REPLIES = [
   { id: 'pricing', label: '💰 Price?', question: 'How much does LeadFora cost?' },
@@ -162,7 +138,6 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
               voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
             },
             systemInstruction: getSarahPersona(leadName),
-            // Updated: Empty objects to enable transcription, removing invalid 'model' arg
             inputAudioTranscription: {}, 
             outputAudioTranscription: {}, 
           },
@@ -370,24 +345,56 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
 
       try {
           const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-          // Generate Summary
-          const summaryResp = await ai.models.generateContent({
+          
+          // Generate Structured Data Extraction
+          const extractionResp = await ai.models.generateContent({
               model: 'gemini-2.5-flash',
-              contents: `Summarize this sales call in a concise paragraph:\n\n${transcript}`,
+              contents: `
+                Analyze the following conversation transcript between an AI agent (Sarah) and a user.
+                Extract the following information provided by the user into a JSON object.
+                
+                CRITICAL INSTRUCTION: Translate ALL extracted values into ENGLISH. The output must be in English regardless of the conversation language.
+
+                Fields to extract:
+                - fullName (string)
+                - phoneNumber (string)
+                - email (string)
+                - agencyName (string)
+                - serviceNeeded (string, valid values: "Instant Response", "Database Resurrection", "Full System")
+                - callSummary (string, a brief summary of the call in English)
+                
+                If a field is missing or not provided, set it to null.
+                
+                Transcript:
+                ${transcript}
+              `,
+              config: {
+                  responseMimeType: "application/json"
+              }
           });
-          const summary = summaryResp.text;
+          
+          let extractedData = {};
+          try {
+             // Robust JSON parsing: clean markdown if present
+             const cleanText = extractionResp.text.replace(/```json/g, '').replace(/```/g, '').trim();
+             extractedData = JSON.parse(cleanText);
+          } catch (e) {
+             console.error("Failed to parse JSON response", e);
+             extractedData = { error: "Failed to parse AI response" };
+          }
 
           // Send to Webhook
           await fetch('https://mistakable-danyell-limpidly.ngrok-free.dev/webhook/187f55c9-e245-44de-90d0-779b073c86f8', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                  type: 'voice_call_summary',
+                  type: 'voice_call_data',
                   transcript,
-                  summary,
+                  extractedData,
                   timestamp: new Date().toISOString(),
                   leadName: leadName || "Unknown"
-              })
+              }),
+              keepalive: true // Important: prevents request cancellation on component unmount
           });
       } catch (e) {
           console.error("Failed to process call summary", e);
