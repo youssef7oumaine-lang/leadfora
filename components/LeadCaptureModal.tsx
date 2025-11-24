@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 interface LeadCaptureModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: () => void;
+  onSuccess?: (data?: { name: string }) => void;
 }
 
 const LeadCaptureModal: React.FC<LeadCaptureModalProps> = ({ isOpen, onClose, onSuccess }) => {
@@ -40,35 +40,45 @@ const LeadCaptureModal: React.FC<LeadCaptureModalProps> = ({ isOpen, onClose, on
     setFormState('submitting');
     setErrorMessage('');
 
+    const payload = {
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      source: "LeadFora Website",
+      date: new Date().toISOString()
+    };
+
+    // Optimistic Success: Trigger transition immediately
+    if (onSuccess) {
+        // Pass payload so Voice Agent knows the name
+        onSuccess({ name: formData.name });
+        
+        // Background submission
+        fetch('https://mistakable-danyell-limpidly.ngrok-free.dev/webhook/187f55c9-e245-44de-90d0-779b073c86f8', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        }).catch(err => console.error("Background submission failed", err));
+
+        // Reset state silently
+        setFormState('idle');
+        setFormData({ name: '', email: '', phone: '' });
+        return;
+    }
+
+    // Fallback behavior if no onSuccess provided (legacy)
     try {
       const response = await fetch('https://mistakable-danyell-limpidly.ngrok-free.dev/webhook/187f55c9-e245-44de-90d0-779b073c86f8', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          source: "LeadFora Website",
-          date: new Date().toISOString()
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
-        // Trigger immediate success flow if callback provided
-        if (onSuccess) {
-            onSuccess();
-            // Quiet reset
-            setFormState('idle');
-            setFormData({ name: '', email: '', phone: '' });
-            return; 
-        }
-
         setFormState('success');
-        // Clear form data
         setFormData({ name: '', email: '', phone: '' });
-        // Close modal after delay
         setTimeout(() => {
           onClose();
         }, 2000);
@@ -199,7 +209,7 @@ const LeadCaptureModal: React.FC<LeadCaptureModalProps> = ({ isOpen, onClose, on
                     Processing...
                   </>
                 ) : (
-                  'CALL ME NOW ⚡'
+                  "GET FREE DEMO"
                 )}
               </button>
             </form>

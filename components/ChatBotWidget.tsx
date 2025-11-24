@@ -8,6 +8,7 @@ interface ChatBotWidgetProps {
   setIsOpen: (isOpen: boolean) => void;
   mode: 'chat' | 'voice';
   setMode: (mode: 'chat' | 'voice') => void;
+  leadData?: { name: string } | null;
 }
 
 type Message = {
@@ -18,7 +19,7 @@ type Message = {
 
 // --- Constants & Persona ---
 
-const SARAH_PERSONA = `### IDENTITY & PERSONA
+const getSarahPersona = (leadName?: string) => `### IDENTITY & PERSONA
 You are **Sarah**, the Senior Growth Consultant at **LeadFora** (The #1 AI Real Estate Solution in Dubai & Riyadh).
 - **Voice Tone:** Professional, Warm, "Smiling," Confident, and High-Energy. You sound like a top-tier executive assistant, not a robot.
 - **Language Skills:** You are a Polyglot Expert. You MUST detect the user's language within the first second and switch instantly.
@@ -29,7 +30,7 @@ You are **Sarah**, the Senior Growth Consultant at **LeadFora** (The #1 AI Real 
   - **Russian:** If detected.
 
 ### CONTEXT
-You are calling a Real Estate Agency Owner or Manager who just submitted a "Get Demo" form on the LeadFora website. They are expecting this call because they clicked "Call Me Now."
+You are calling a Real Estate Agency Owner or Manager ${leadName ? `named ${leadName} ` : ''}who just submitted a "Get Demo" form on the LeadFora website. They are expecting this call because they clicked "Call Me Now."
 
 ### YOUR GOAL
 Your goal is NOT to give a technical lecture. Your goal is to **QUALIFY** them and **BOOK A ZOOM DEMO** for the technical team.
@@ -43,7 +44,7 @@ We provide a "Done-For-You" AI System for Real Estate Agencies that includes:
 ### CONVERSATION FLOW (Script)
 
 **1. THE OPENER (High Energy):**
-"Hello! This is Sarah from LeadFora. I’m calling you instantly because you just requested a demo on our site. Am I speaking with [Name]?"
+"Hello! This is Sarah from LeadFora. I’m calling you instantly because you just requested a demo on our site.${leadName ? ` Am I speaking with ${leadName}?` : ' Am I speaking with the agency owner?'}"
 
 **2. THE HOOK (The "Aha!" Moment):**
 *Wait for answer.*
@@ -108,9 +109,10 @@ function base64ToUint8Array(base64: string): Uint8Array {
 
 // --- Voice Call Component ---
 
-const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => void }> = ({ onEndCall, onOpenModal }) => {
+const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => void; leadName?: string }> = ({ onEndCall, onOpenModal, leadName }) => {
   const [status, setStatus] = useState<'connecting' | 'connected' | 'error' | 'ended' | 'reconnecting'>('connecting');
   const [volume, setVolume] = useState(0); // For visualizer
+  const [isProcessingEnd, setIsProcessingEnd] = useState(false);
   
   // Audio Refs
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -121,6 +123,11 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
   const nextStartTimeRef = useRef<number>(0);
   const sessionRef = useRef<any>(null); 
   const retryTimeoutRef = useRef<any>(null);
+
+  // Transcription Refs
+  const transcriptHistory = useRef<string[]>([]);
+  const currentModelTranscript = useRef<string>('');
+  const currentUserTranscript = useRef<string>('');
 
   useEffect(() => {
     let mounted = true;
@@ -154,7 +161,10 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
             speechConfig: {
               voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
             },
-            systemInstruction: SARAH_PERSONA,
+            systemInstruction: getSarahPersona(leadName),
+            // Updated: Empty objects to enable transcription, removing invalid 'model' arg
+            inputAudioTranscription: {}, 
+            outputAudioTranscription: {}, 
           },
           callbacks: {
             onopen: async () => {
@@ -218,6 +228,27 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
             },
             onmessage: async (message: LiveServerMessage) => {
                if (!mounted) return;
+
+               // Handle Transcription
+               const content = message.serverContent;
+               if (content) {
+                   if (content.outputTranscription?.text) {
+                       currentModelTranscript.current += content.outputTranscription.text;
+                   }
+                   if (content.inputTranscription?.text) {
+                       currentUserTranscript.current += content.inputTranscription.text;
+                   }
+                   if (content.turnComplete) {
+                        if (currentUserTranscript.current) {
+                            transcriptHistory.current.push(`User: ${currentUserTranscript.current}`);
+                            currentUserTranscript.current = '';
+                        }
+                        if (currentModelTranscript.current) {
+                            transcriptHistory.current.push(`Sarah: ${currentModelTranscript.current}`);
+                            currentModelTranscript.current = '';
+                        }
+                   }
+               }
                
                // Handle Audio Output
                const audioData = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
@@ -316,7 +347,52 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
           }
       }
     };
-  }, []);
+  }, [leadName]); // Re-run if leadName changes (new call)
+
+  const handleEndCallInternal = async () => {
+    setIsProcessingEnd(true);
+
+    // 1. Flush remaining transcript
+    if (currentUserTranscript.current) transcriptHistory.current.push(`User: ${currentUserTranscript.current}`);
+    if (currentModelTranscript.current) transcriptHistory.current.push(`Sarah: ${currentModelTranscript.current}`);
+
+    const fullTranscript = transcriptHistory.current.join('\n');
+
+    // 2. Initiate background processing (Fire and Forget from UI perspective)
+    processCallSummary(fullTranscript).catch(err => console.error("Summary Error", err));
+
+    // 3. Close UI
+    onEndCall();
+  };
+
+  const processCallSummary = async (transcript: string) => {
+      if (!transcript || transcript.trim().length < 10) return;
+
+      try {
+          const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+          // Generate Summary
+          const summaryResp = await ai.models.generateContent({
+              model: 'gemini-2.5-flash',
+              contents: `Summarize this sales call in a concise paragraph:\n\n${transcript}`,
+          });
+          const summary = summaryResp.text;
+
+          // Send to Webhook
+          await fetch('https://mistakable-danyell-limpidly.ngrok-free.dev/webhook/187f55c9-e245-44de-90d0-779b073c86f8', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  type: 'voice_call_summary',
+                  transcript,
+                  summary,
+                  timestamp: new Date().toISOString(),
+                  leadName: leadName || "Unknown"
+              })
+          });
+      } catch (e) {
+          console.error("Failed to process call summary", e);
+      }
+  };
 
   return (
     <div className="h-full flex flex-col bg-[#0F172A] relative overflow-hidden">
@@ -331,7 +407,7 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
                  <div className={`w-2 h-2 rounded-full ${status === 'connected' ? 'bg-green-500' : (status === 'reconnecting' ? 'bg-yellow-500' : 'bg-red-500')} animate-pulse`}></div>
                  <span className="text-xs font-bold text-white tracking-widest uppercase">Live Demo Call</span>
             </div>
-            <button onClick={onEndCall} className="text-slate-400 hover:text-white">
+            <button onClick={handleEndCallInternal} className="text-slate-400 hover:text-white">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
         </div>
@@ -386,8 +462,9 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
         {/* Controls */}
         <div className="relative z-10 p-6 bg-slate-900/50 backdrop-blur-md border-t border-white/10 flex justify-center gap-6">
             <button 
-                onClick={onEndCall}
-                className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg shadow-red-500/20 transition-all hover:scale-110"
+                onClick={handleEndCallInternal}
+                disabled={isProcessingEnd}
+                className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg shadow-red-500/20 transition-all hover:scale-110 disabled:opacity-50"
             >
                 <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.36 7.46 6 12 6s8.66 2.36 11.71 5.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg>
             </button>
@@ -407,7 +484,7 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
 
 // --- Main Widget ---
 
-const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setIsOpen, mode, setMode }) => {
+const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setIsOpen, mode, setMode, leadData }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { id: 1, text: "Salam! 👋 I'm Sarah, the LeadFora AI Agent. I can speak 30+ languages. Want to hear me?", sender: 'ai' }
@@ -445,7 +522,7 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
             const chat = ai.chats.create({
               model: 'gemini-3-pro-preview',
               config: {
-                systemInstruction: SARAH_PERSONA,
+                systemInstruction: getSarahPersona(leadData?.name),
               }
             });
             setTextChatSession(chat);
@@ -453,7 +530,7 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
             console.error("Failed to initialize Text AI", error);
         }
     }
-  }, [mode]);
+  }, [mode, leadData]);
 
   const handleSendMessage = async (text: string, isDemo: boolean = false) => {
     if (!text.trim()) return;
@@ -565,7 +642,8 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
           {mode === 'voice' ? (
               <VoiceCallInterface 
                 onEndCall={() => setMode('chat')} 
-                onOpenModal={onOpenModal} 
+                onOpenModal={onOpenModal}
+                leadName={leadData?.name}
               />
           ) : (
             <>

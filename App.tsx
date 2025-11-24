@@ -15,6 +15,7 @@ const App: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMode, setChatMode] = useState<'chat' | 'voice'>('chat');
+  const [leadData, setLeadData] = useState<{name: string} | null>(null);
 
   // Scroll to top on mount
   useEffect(() => {
@@ -29,7 +30,8 @@ const App: React.FC = () => {
     setIsModalOpen(false);
   };
 
-  const handleFormSuccess = () => {
+  const handleFormSuccess = (data?: {name: string}) => {
+    if (data) setLeadData(data);
     setIsModalOpen(false);
     setChatMode('voice');
     setIsChatOpen(true);
@@ -60,6 +62,7 @@ const App: React.FC = () => {
         setIsOpen={setIsChatOpen}
         mode={chatMode}
         setMode={setChatMode}
+        leadData={leadData}
       />
       <LeadCaptureModal 
         isOpen={isModalOpen} 
