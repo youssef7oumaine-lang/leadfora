@@ -6,6 +6,8 @@ interface ChatBotWidgetProps {
   onOpenModal: () => void;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
+  mode: 'chat' | 'voice';
+  setMode: (mode: 'chat' | 'voice') => void;
 }
 
 type Message = {
@@ -405,8 +407,7 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
 
 // --- Main Widget ---
 
-const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setIsOpen }) => {
-  const [mode, setMode] = useState<'chat' | 'voice'>('chat'); // Toggle between text and voice
+const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setIsOpen, mode, setMode }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { id: 1, text: "Salam! 👋 I'm Sarah, the LeadFora AI Agent. I can speak 30+ languages. Want to hear me?", sender: 'ai' }

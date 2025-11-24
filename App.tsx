@@ -14,6 +14,7 @@ import Footer from './components/Footer';
 const App: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMode, setChatMode] = useState<'chat' | 'voice'>('chat');
 
   // Scroll to top on mount
   useEffect(() => {
@@ -26,6 +27,12 @@ const App: React.FC = () => {
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
+  };
+
+  const handleFormSuccess = () => {
+    setIsModalOpen(false);
+    setChatMode('voice');
+    setIsChatOpen(true);
   };
 
   const toggleChat = () => {
@@ -51,8 +58,14 @@ const App: React.FC = () => {
         onOpenModal={handleOpenModal} 
         isOpen={isChatOpen}
         setIsOpen={setIsChatOpen}
+        mode={chatMode}
+        setMode={setChatMode}
       />
-      <LeadCaptureModal isOpen={isModalOpen} onClose={handleCloseModal} />
+      <LeadCaptureModal 
+        isOpen={isModalOpen} 
+        onClose={handleCloseModal} 
+        onSuccess={handleFormSuccess}
+      />
     </main>
   );
 };

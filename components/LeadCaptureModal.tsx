@@ -4,9 +4,10 @@ import React, { useState, useEffect } from 'react';
 interface LeadCaptureModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
-const LeadCaptureModal: React.FC<LeadCaptureModalProps> = ({ isOpen, onClose }) => {
+const LeadCaptureModal: React.FC<LeadCaptureModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [formState, setFormState] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [formData, setFormData] = useState({
@@ -55,6 +56,15 @@ const LeadCaptureModal: React.FC<LeadCaptureModalProps> = ({ isOpen, onClose }) 
       });
 
       if (response.ok) {
+        // Trigger immediate success flow if callback provided
+        if (onSuccess) {
+            onSuccess();
+            // Quiet reset
+            setFormState('idle');
+            setFormData({ name: '', email: '', phone: '' });
+            return; 
+        }
+
         setFormState('success');
         // Clear form data
         setFormData({ name: '', email: '', phone: '' });
