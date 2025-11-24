@@ -17,7 +17,7 @@ type Message = {
   sender: 'ai' | 'user';
 };
 
-// --- Constants & Persona ---
+// --- Persona ---
 
 const getSarahPersona = (leadName?: string) => `IDENTITY:
 You are Sarah, LeadFora's Senior AI Consultant. You are professional, warm, and highly efficient.
@@ -35,7 +35,7 @@ CONVERSATION FLOW (Strict Order):
 2.  **Data Collection (The Mission):**
     *   Once language is set, say: "Great. To customize your demo, I just need 5 quick details."
     *   Ask for these one by one (or 2 at a time) naturally:
-        1.  **Full Name** (Verify if it matches "${leadName || ''}")
+        1.  **Full Name**
         2.  **Phone Number**
         3.  **Email Address**
         4.  **Agency Name**
@@ -52,7 +52,58 @@ const QUICK_REPLIES = [
   { id: 'demo', label: '🚀 Test AI', question: 'I want to test the AI.' },
 ];
 
-// --- Audio Utils ---
+// --- Helper Functions ---
+
+const processCallSummary = async (transcript: string) => {
+  if (!transcript || transcript.length < 10) return;
+
+  try {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // Use Flash for quick text extraction
+    const model = ai.models;
+    
+    const prompt = `
+      Analyze the following conversation transcript between an AI (Sarah) and a User.
+      Extract the following information in strict JSON format.
+      
+      Fields to extract:
+      - full_name (string)
+      - phone_number (string)
+      - email_address (string)
+      - agency_name (string)
+      - service_needed (string)
+      - language_preference (string)
+      - call_summary (string)
+
+      Transcript:
+      ${transcript}
+
+      OUTPUT JSON ONLY. Do not include markdown code blocks.
+    `;
+
+    const result = await model.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt
+    });
+    
+    let jsonStr = result.text || "{}";
+    
+    // Sanitize
+    jsonStr = jsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
+
+    // Send to n8n
+    await fetch('https://mistakable-danyell-limpidly.ngrok-free.dev/webhook/187f55c9-e245-44de-90d0-779b073c86f8', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: jsonStr,
+      keepalive: true
+    });
+    console.log("Call summary sent to webhook");
+
+  } catch (error) {
+    console.error("Failed to process call summary", error);
+  }
+};
 
 function floatTo16BitPCM(float32Array: Float32Array): ArrayBuffer {
   const buffer = new ArrayBuffer(float32Array.length * 2);
@@ -87,8 +138,7 @@ function base64ToUint8Array(base64: string): Uint8Array {
 
 const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => void; leadName?: string }> = ({ onEndCall, onOpenModal, leadName }) => {
   const [status, setStatus] = useState<'connecting' | 'connected' | 'error' | 'ended' | 'reconnecting'>('connecting');
-  const [volume, setVolume] = useState(0); // For visualizer
-  const [isProcessingEnd, setIsProcessingEnd] = useState(false);
+  const [volume, setVolume] = useState(0); 
   
   // Audio Refs
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -99,16 +149,14 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
   const nextStartTimeRef = useRef<number>(0);
   const sessionRef = useRef<any>(null); 
   const retryTimeoutRef = useRef<any>(null);
-
-  // Transcription Refs
-  const transcriptHistory = useRef<string[]>([]);
-  const currentModelTranscript = useRef<string>('');
-  const currentUserTranscript = useRef<string>('');
+  
+  // Transcript accumulation
+  const transcriptRef = useRef<string>("");
 
   useEffect(() => {
     let mounted = true;
 
-    // Initialize Audio Contexts ONLY ONCE
+    // Initialize Audio Contexts
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
     const outputContext = new AudioContextClass({ sampleRate: 24000 }); // Output at 24kHz
     const inputContext = new AudioContextClass({ sampleRate: 16000 }); // Input at 16kHz
@@ -119,12 +167,11 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
     const connectToGemini = async (retries = 0) => {
       try {
         if (!process.env.API_KEY) {
-            console.error("No API Key found in process.env.API_KEY");
+            console.error("No API Key found");
             if (mounted) setStatus('error');
             return;
         }
 
-        // Resume contexts if suspended
         if (outputContext.state === 'suspended') await outputContext.resume();
         if (inputContext.state === 'suspended') await inputContext.resume();
 
@@ -138,6 +185,7 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
               voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
             },
             systemInstruction: getSarahPersona(leadName),
+            // Enable transcription by passing empty objects
             inputAudioTranscription: {}, 
             outputAudioTranscription: {}, 
           },
@@ -146,13 +194,13 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
               if (!mounted) return;
               console.log("Gemini Live Connected");
               setStatus('connected');
+              transcriptRef.current = ""; // Reset transcript
 
-              // Clean up previous stream/processor if retrying
+              // Setup Microphone
               if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
               if (processorRef.current) processorRef.current.disconnect();
               if (sourceRef.current) sourceRef.current.disconnect();
 
-              // Start Microphone Input
               try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 streamRef.current = stream;
@@ -164,20 +212,16 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
                 processorRef.current = processor;
                 
                 processor.onaudioprocess = (e) => {
-                  if (!mounted) return;
-                  
-                  // Only process if we have an active session and are connected
-                  if (!sessionRef.current) return;
+                  if (!mounted || !sessionRef.current) return;
 
                   const inputData = e.inputBuffer.getChannelData(0);
                   
-                  // Visualizer Logic
+                  // Simple Volume Calculation
                   let sum = 0;
                   for(let i=0; i<inputData.length; i++) sum += inputData[i] * inputData[i];
                   const rms = Math.sqrt(sum / inputData.length);
                   setVolume(Math.min(rms * 10, 1)); 
 
-                  // Send to API
                   const pcm16 = floatTo16BitPCM(inputData);
                   const base64 = base64Encode(pcm16);
                   
@@ -188,9 +232,7 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
                             data: base64
                         }
                     });
-                  } catch(err) {
-                    // Ignore send errors during reconnection phases
-                  }
+                  } catch(err) { }
                 };
 
                 source.connect(processor);
@@ -204,28 +246,15 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
             onmessage: async (message: LiveServerMessage) => {
                if (!mounted) return;
 
-               // Handle Transcription
-               const content = message.serverContent;
-               if (content) {
-                   if (content.outputTranscription?.text) {
-                       currentModelTranscript.current += content.outputTranscription.text;
-                   }
-                   if (content.inputTranscription?.text) {
-                       currentUserTranscript.current += content.inputTranscription.text;
-                   }
-                   if (content.turnComplete) {
-                        if (currentUserTranscript.current) {
-                            transcriptHistory.current.push(`User: ${currentUserTranscript.current}`);
-                            currentUserTranscript.current = '';
-                        }
-                        if (currentModelTranscript.current) {
-                            transcriptHistory.current.push(`Sarah: ${currentModelTranscript.current}`);
-                            currentModelTranscript.current = '';
-                        }
-                   }
+               // --- HANDLE TRANSCRIPTION ---
+               if (message.serverContent?.inputTranscription?.text) {
+                   transcriptRef.current += `User: ${message.serverContent.inputTranscription.text}\n`;
                }
-               
-               // Handle Audio Output
+               if (message.serverContent?.outputTranscription?.text) {
+                   transcriptRef.current += `Sarah: ${message.serverContent.outputTranscription.text}\n`;
+               }
+
+               // --- HANDLE AUDIO ---
                const audioData = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
                if (audioData && outputContext) {
                  const audioBytes = base64ToUint8Array(audioData);
@@ -257,19 +286,18 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
             onclose: () => {
                 console.log("Connection closed");
                 if (mounted && status !== 'error') setStatus('ended');
+                // Process summary on close
+                processCallSummary(transcriptRef.current);
             },
             onerror: (e) => {
                 console.error("Gemini Error:", e);
                 if (mounted) {
-                    // Retry logic for Service Unavailable or other transient errors
                     if (retries < 3) {
-                        console.log(`Retrying connection... Attempt ${retries + 1}`);
                         setStatus('reconnecting');
-                        sessionRef.current = null; // Prevent sending data
-                        
+                        sessionRef.current = null;
                         retryTimeoutRef.current = setTimeout(() => {
                             connectToGemini(retries + 1);
-                        }, 2000 * (retries + 1)); // Exponential backoff
+                        }, 2000 * (retries + 1));
                     } else {
                         setStatus('error');
                     }
@@ -279,11 +307,7 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
         });
 
         const s = await sessionPromise;
-        if (mounted) {
-            sessionRef.current = s;
-        } else {
-            s.close();
-        }
+        if (mounted) sessionRef.current = s;
 
       } catch (error) {
         console.error("Connection Failed:", error);
@@ -317,89 +341,10 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
       if (sessionRef.current) {
           try {
             sessionRef.current.close();
-          } catch(e) {
-              console.log("Session close skipped or failed", e);
-          }
+          } catch(e) {}
       }
     };
-  }, [leadName]); // Re-run if leadName changes (new call)
-
-  const handleEndCallInternal = async () => {
-    setIsProcessingEnd(true);
-
-    // 1. Flush remaining transcript
-    if (currentUserTranscript.current) transcriptHistory.current.push(`User: ${currentUserTranscript.current}`);
-    if (currentModelTranscript.current) transcriptHistory.current.push(`Sarah: ${currentModelTranscript.current}`);
-
-    const fullTranscript = transcriptHistory.current.join('\n');
-
-    // 2. Initiate background processing (Fire and Forget from UI perspective)
-    processCallSummary(fullTranscript).catch(err => console.error("Summary Error", err));
-
-    // 3. Close UI
-    onEndCall();
-  };
-
-  const processCallSummary = async (transcript: string) => {
-      if (!transcript || transcript.trim().length < 10) return;
-
-      try {
-          const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-          
-          // Generate Structured Data Extraction
-          const extractionResp = await ai.models.generateContent({
-              model: 'gemini-2.5-flash',
-              contents: `
-                Analyze the following conversation transcript between an AI agent (Sarah) and a user.
-                Extract the following information provided by the user into a JSON object.
-                
-                CRITICAL INSTRUCTION: Translate ALL extracted values into ENGLISH. The output must be in English regardless of the conversation language.
-
-                Fields to extract:
-                - fullName (string)
-                - phoneNumber (string)
-                - email (string)
-                - agencyName (string)
-                - serviceNeeded (string, valid values: "Instant Response", "Database Resurrection", "Full System")
-                - callSummary (string, a brief summary of the call in English)
-                
-                If a field is missing or not provided, set it to null.
-                
-                Transcript:
-                ${transcript}
-              `,
-              config: {
-                  responseMimeType: "application/json"
-              }
-          });
-          
-          let extractedData = {};
-          try {
-             // Robust JSON parsing: clean markdown if present
-             const cleanText = extractionResp.text.replace(/```json/g, '').replace(/```/g, '').trim();
-             extractedData = JSON.parse(cleanText);
-          } catch (e) {
-             console.error("Failed to parse JSON response", e);
-             extractedData = { error: "Failed to parse AI response" };
-          }
-
-          // Send to Webhook
-          await fetch('https://mistakable-danyell-limpidly.ngrok-free.dev/webhook/187f55c9-e245-44de-90d0-779b073c86f8', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                  type: 'voice_call_data',
-                  transcript,
-                  extractedData,
-                  timestamp: new Date().toISOString(),
-                  leadName: leadName || "Unknown"
-              }),
-              keepalive: true // Important: prevents request cancellation on component unmount
-          });
-      } catch (e) {
-          console.error("Failed to process call summary", e);
-      }
-  };
+  }, [leadName]); 
 
   return (
     <div className="h-full flex flex-col bg-[#0F172A] relative overflow-hidden">
@@ -414,7 +359,7 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
                  <div className={`w-2 h-2 rounded-full ${status === 'connected' ? 'bg-green-500' : (status === 'reconnecting' ? 'bg-yellow-500' : 'bg-red-500')} animate-pulse`}></div>
                  <span className="text-xs font-bold text-white tracking-widest uppercase">Live Demo Call</span>
             </div>
-            <button onClick={handleEndCallInternal} className="text-slate-400 hover:text-white">
+            <button onClick={onEndCall} className="text-slate-400 hover:text-white">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
         </div>
@@ -454,13 +399,7 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
             <div className="space-y-2 max-w-[250px]">
                 <h3 className="text-xl font-bold text-white">Sarah (AI Agent)</h3>
                 <p className="text-slate-400 text-sm">
-                    {status === 'connected' 
-                        ? "Say 'Hello' to start..." 
-                        : status === 'error' 
-                            ? "Service unavailable. Retrying..." 
-                            : status === 'reconnecting'
-                                ? "Connection lost. Reconnecting..."
-                                : "Establishing secure line..."}
+                   I'm here to qualify your request. <br/>Speak naturally in your preferred language.
                 </p>
             </div>
 
@@ -469,9 +408,8 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
         {/* Controls */}
         <div className="relative z-10 p-6 bg-slate-900/50 backdrop-blur-md border-t border-white/10 flex justify-center gap-6">
             <button 
-                onClick={handleEndCallInternal}
-                disabled={isProcessingEnd}
-                className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg shadow-red-500/20 transition-all hover:scale-110 disabled:opacity-50"
+                onClick={onEndCall}
+                className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg shadow-red-500/20 transition-all hover:scale-110"
             >
                 <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.36 7.46 6 12 6s8.66 2.36 11.71 5.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg>
             </button>
@@ -480,7 +418,7 @@ const VoiceCallInterface: React.FC<{ onEndCall: () => void; onOpenModal: () => v
                 onClick={onOpenModal}
                 className="h-14 px-6 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-white font-bold gap-2 transition-all"
             >
-                <span>Book Demo</span>
+                <span>Manual Book</span>
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
             </button>
         </div>
