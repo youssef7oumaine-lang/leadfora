@@ -1,5 +1,7 @@
 {
   "name": "Copy of LeadFora",
   "description": "A high-conversion landing page for a 24/7 AI Lead Qualification Agent.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }
