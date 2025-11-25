@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { GoogleGenAI, LiveServerMessage, Modality } from "@google/genai";
+import { GoogleGenAI, LiveServerMessage, Modality, Type } from "@google/genai";
 
 interface ChatBotWidgetProps {
   onOpenModal: () => void;
@@ -59,49 +59,46 @@ const processCallSummary = async (transcript: string) => {
 
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    // Use Flash for quick text extraction
-    const model = ai.models;
     
-    const prompt = `
-      Analyze the following conversation transcript between an AI (Sarah) and a User.
-      Extract the following information in strict JSON format.
-      
-      Fields to extract:
-      - full_name (string)
-      - phone_number (string)
-      - email_address (string)
-      - agency_name (string)
-      - service_needed (string)
-      - language_preference (string)
-      - call_summary (string)
-
-      Transcript:
-      ${transcript}
-
-      OUTPUT JSON ONLY. Do not include markdown code blocks.
-    `;
-
-    const result = await model.generateContent({
+    // Use Flash with responseSchema for reliable JSON extraction
+    const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: prompt
+        contents: `Extract the following details from the conversation transcript in JSON format.
+        
+        Transcript:
+        ${transcript}`,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    full_name: { type: Type.STRING },
+                    phone_number: { type: Type.STRING },
+                    email_address: { type: Type.STRING },
+                    agency_name: { type: Type.STRING },
+                    service_needed: { type: Type.STRING },
+                    language_preference: { type: Type.STRING },
+                    call_summary: { type: Type.STRING }
+                }
+            }
+        }
     });
     
-    let jsonStr = result.text || "{}";
+    const jsonStr = response.text;
     
-    // Sanitize
-    jsonStr = jsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
+    if (jsonStr) {
+        // Send to n8n
+        await fetch('https://mistakable-danyell-limpidly.ngrok-free.dev/webhook/187f55c9-e245-44de-90d0-779b073c86f8', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: jsonStr,
+          keepalive: true
+        });
+        console.log("Call summary sent to webhook");
+    }
 
-    // Send to n8n
-    await fetch('https://mistakable-danyell-limpidly.ngrok-free.dev/webhook/187f55c9-e245-44de-90d0-779b073c86f8', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: jsonStr,
-      keepalive: true
-    });
-    console.log("Call summary sent to webhook");
-
-  } catch (error) {
-    console.error("Failed to process call summary", error);
+  } catch (error: any) {
+    console.error("Failed to process call summary:", error.message || error);
   }
 };
 
