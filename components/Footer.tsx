@@ -45,9 +45,11 @@ const Footer: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between items-start gap-12 mb-16">
           
           <div className="max-w-md space-y-4">
-            <h2 className="text-3xl font-light tracking-wide text-white">
-              Wolfz AI
-            </h2>
+            {/* Logo Text - White with Negan DEMO Font */}
+            <div className="text-white">
+              <h2 className="text-4xl font-['Negan_DEMO'] tracking-widest uppercase">WOLFZ AI</h2>
+            </div>
+            
             <p className="text-slate-400 text-base leading-relaxed">
               {t.footer.desc}
             </p>

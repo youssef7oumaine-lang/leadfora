@@ -72,15 +72,12 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenModal, onToggleChat }) => {
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       <div className="w-full max-w-7xl mx-auto h-full flex items-center justify-between">
-        {/* Logo Text - Minimalist Luxury Update (Dark Text Forced) */}
+        {/* Logo - Text with Negan DEMO Font */}
         <div 
-          className="flex items-center cursor-pointer"
+          className="flex items-center cursor-pointer text-slate-900"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         >
-           <h1 className="text-2xl font-light tracking-wide flex items-center gap-1.5 transition-colors duration-300 text-slate-900">
-             <span>Wolfz</span>
-             <span>AI</span>
-           </h1>
+           <h1 className="text-3xl font-['Negan_DEMO'] tracking-widest uppercase">WOLFZ AI</h1>
         </div>
 
         {/* Navigation Links - Dark Text Forced */}
