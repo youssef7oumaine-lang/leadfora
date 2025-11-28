@@ -8,6 +8,9 @@ interface HeroSectionProps {
 
 const HeroSection: React.FC<HeroSectionProps> = ({ onOpenModal }) => {
   const { t, isRTL } = useTranslation();
+  
+  // Split headline to control line spacing precisely
+  const headlines = t.hero.headline.split('\n');
 
   return (
     <section 
@@ -31,16 +34,22 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onOpenModal }) => {
         </div>
       </div>
 
-      <div className="relative z-10 flex flex-col items-center text-center px-4 w-full max-w-[900px] mt-12 -translate-y-8 space-y-8">
+      <div className="relative z-10 flex flex-col items-center text-center px-4 w-full max-w-6xl mt-12 -translate-y-14 space-y-8">
         
         <h1 
-          className="font-bold text-white leading-tight tracking-tight whitespace-pre-line"
+          className="font-bold text-white tracking-tight"
           style={{ 
-            fontSize: '3rem', 
             textShadow: '0 2px 4px rgba(0,0,0,0.6)' 
           }}
         >
-          {t.hero.headline}
+          {headlines.map((line, index) => (
+            <span 
+              key={index} 
+              className={`block text-3xl md:text-5xl leading-tight ${index > 0 ? 'mt-2 md:mt-4' : ''}`}
+            >
+              {line}
+            </span>
+          ))}
         </h1>
 
         <div className="pt-4">
