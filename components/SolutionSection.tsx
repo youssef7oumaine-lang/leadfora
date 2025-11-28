@@ -1,10 +1,10 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import LiveDashboard from './LiveDashboard';
+import { useTranslation } from '../LanguageContext';
 
 interface SolutionSectionProps {
   onOpenModal: () => void;
-  // id prop is optional but we default to "services" internally to guarantee scrolling
   id?: string;
 }
 
@@ -24,37 +24,6 @@ const styles = `
   .animate-flow { animation: flow-dash 2s linear infinite; }
   .animate-ripple { animation: ripple 2s cubic-bezier(0, 0.2, 0.8, 1) infinite; }
 `;
-
-// --- Data ---
-
-const steps = [
-  {
-    id: 1,
-    number: '01',
-    title: 'Answers In Seconds',
-    desc: 'Your lead calls at 2 AM. Our AI picks up before the 3rd ring. Smart greeting. Professional. Instant.',
-    stat: '<10s Response',
-    iconType: 'phone'
-  },
-  {
-    id: 2,
-    number: '02',
-    title: 'Understands Everything',
-    desc: 'AI asks 3 pre-qualified questions (Budget? Location? Timeline?). Captures intent perfectly. No dead air.',
-    stat: '98% Qualification',
-    iconType: 'brain'
-  },
-  {
-    id: 3,
-    number: '03',
-    title: 'Books It Instantly',
-    desc: 'Lead interested? Meeting auto-booked. Calendar updated. SMS notification sent to agent. Done.',
-    stat: '0 Manual Touchpoints',
-    iconType: 'calendar'
-  }
-];
-
-// --- Sub-Components ---
 
 const StepIcon: React.FC<{ type: string }> = ({ type }) => {
   if (type === 'phone') {
@@ -97,8 +66,8 @@ const StepIcon: React.FC<{ type: string }> = ({ type }) => {
 const SolutionSection: React.FC<SolutionSectionProps> = ({ onOpenModal }) => {
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
+  const { t, isRTL } = useTranslation();
   
-  // Intersection Observer for Section
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -116,6 +85,15 @@ const SolutionSection: React.FC<SolutionSectionProps> = ({ onOpenModal }) => {
     return () => observer.disconnect();
   }, []);
 
+  const steps = [
+    { id: 1, number: '01', iconType: 'phone' },
+    { id: 2, number: '02', iconType: 'brain' },
+    { id: 3, number: '03', iconType: 'calendar' }
+  ].map((step, idx) => ({
+    ...step,
+    ...t.solution.steps[idx]
+  }));
+
   return (
     <section 
       id="services"
@@ -124,10 +102,9 @@ const SolutionSection: React.FC<SolutionSectionProps> = ({ onOpenModal }) => {
       style={{
         background: 'linear-gradient(to bottom, #FFFFFF 0%, #F8FAFC 100%)'
       }}
+      dir={isRTL ? 'rtl' : 'ltr'}
     >
       <style>{styles}</style>
-
-      {/* Neural Grid Background Overlay */}
       <div className="absolute inset-0 pointer-events-none opacity-30">
          <div className="absolute inset-0" 
               style={{ 
@@ -139,20 +116,16 @@ const SolutionSection: React.FC<SolutionSectionProps> = ({ onOpenModal }) => {
 
       <div className="relative max-w-7xl mx-auto z-10">
         
-        {/* 1. Header */}
         <div className="text-center mb-20">
           <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4 tracking-tight">
-            While You Sleep, AI Works. <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-emerald-500">Perfectly.</span>
+            {t.solution.headline} <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-emerald-500">{t.solution.headline_highlight}</span>
           </h2>
           <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-            From the first ring to a booked meeting. No humans needed.
+            {t.solution.subheadline}
           </p>
         </div>
 
-        {/* 2. Timeline / Cards */}
         <div className="relative mb-32">
-          
-          {/* Connecting Line (Desktop) */}
           <div className="hidden md:block absolute top-1/2 left-0 w-full h-1 bg-slate-200 -translate-y-1/2 z-0">
             <div className={`h-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-[2000ms] ease-out ${isVisible ? 'w-full' : 'w-0'}`} />
           </div>
@@ -169,18 +142,14 @@ const SolutionSection: React.FC<SolutionSectionProps> = ({ onOpenModal }) => {
                   transitionDelay: `${idx * 200}ms`
                 }}
               >
-                {/* Vertical Connector (Desktop) */}
                 <div className="hidden md:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-full border-l-2 border-dashed border-cyan-200/50 -z-10 h-[140%]" />
 
-                {/* Card Body - Obsidian Glass */}
                 <div className="h-full bg-[#0F172A]/95 backdrop-blur-xl border border-cyan-500/20 rounded-2xl p-8 shadow-2xl hover:-translate-y-2 transition-transform duration-300">
                   
-                  {/* Step Number Badge */}
-                  <div className="absolute top-6 right-6 w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-emerald-500 flex items-center justify-center text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
+                  <div className={`absolute top-6 ${isRTL ? 'left-6' : 'right-6'} w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-emerald-500 flex items-center justify-center text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform`}>
                     {step.number}
                   </div>
 
-                  {/* Icon Area */}
                   <div className="w-16 h-16 mb-6 rounded-2xl bg-slate-800/50 flex items-center justify-center">
                     <StepIcon type={step.iconType} />
                   </div>
@@ -188,7 +157,6 @@ const SolutionSection: React.FC<SolutionSectionProps> = ({ onOpenModal }) => {
                   <h3 className="text-xl font-bold text-white mb-3">{step.title}</h3>
                   <p className="text-slate-300 text-sm leading-relaxed mb-6">{step.desc}</p>
 
-                  {/* Stat Badge */}
                   <div className="inline-block px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20">
                     <span className="text-xs font-mono font-bold text-cyan-400">{step.stat}</span>
                   </div>
@@ -198,26 +166,17 @@ const SolutionSection: React.FC<SolutionSectionProps> = ({ onOpenModal }) => {
           </div>
         </div>
 
-        {/* 3. Live Dashboard & Comparison (Vertical Stack) */}
         <div className="flex flex-col gap-20">
-          
-          {/* Top: Live AI Dashboard */}
           <div className="w-full relative h-full min-h-[500px]">
              <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-2xl opacity-20 blur-lg"></div>
              <LiveDashboard />
           </div>
 
-          {/* Bottom: Comparison Table */}
           <div className="w-full pt-4">
-            <h3 className="text-2xl font-bold text-slate-900 mb-8">Why Human Agents Can't Compete</h3>
+            <h3 className="text-2xl font-bold text-slate-900 mb-8">{t.solution.comparison_title}</h3>
             
             <div className="space-y-4">
-              {[
-                { feature: 'Response Time', human: '2-4 Hours', ai: '< 10 Seconds', win: true },
-                { feature: 'Availability', human: '9 AM - 5 PM', ai: '24/7/365', win: true },
-                { feature: 'Qualification Rate', human: '65% Avg', ai: '98% Consistent', win: true },
-                { feature: 'Simultaneous Calls', human: '1 at a time', ai: 'Unlimited', win: true },
-              ].map((row, idx) => (
+              {t.solution.features.map((row, idx) => (
                 <div 
                   key={idx}
                   className="flex items-center justify-between p-4 rounded-xl hover:bg-white hover:shadow-lg transition-all duration-300 border border-transparent hover:border-slate-100 group"
@@ -227,7 +186,7 @@ const SolutionSection: React.FC<SolutionSectionProps> = ({ onOpenModal }) => {
                     <span className="text-slate-400 line-through decoration-red-400/50">{row.human}</span>
                     <span className="font-bold text-slate-900 group-hover:text-emerald-600 transition-colors flex items-center gap-2">
                       {row.ai}
-                      {row.win && <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                      <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                     </span>
                   </div>
                 </div>
@@ -242,11 +201,10 @@ const SolutionSection: React.FC<SolutionSectionProps> = ({ onOpenModal }) => {
                   background: 'linear-gradient(90deg, #00D9FF 0%, #00FF41 100%)',
                 }}
                >
-                 GET STARTED NOW
+                 {t.solution.cta}
                </button>
             </div>
           </div>
-
         </div>
       </div>
     </section>

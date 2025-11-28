@@ -1,18 +1,22 @@
+
 import React from 'react';
+import { useTranslation } from '../LanguageContext';
 
 interface HeroSectionProps {
   onOpenModal: () => void;
 }
 
 const HeroSection: React.FC<HeroSectionProps> = ({ onOpenModal }) => {
+  const { t, isRTL } = useTranslation();
+
   return (
     <section 
       className="relative w-full h-screen min-h-[600px] flex flex-col items-center justify-center overflow-hidden"
       style={{
         background: 'linear-gradient(to bottom, #F8FAFC 0%, #E2E8F0 100%)'
       }}
+      dir={isRTL ? 'rtl' : 'ltr'}
     >
-      {/* 3D Spline Background Layer - Scaled to crop watermark */}
       <div className="absolute inset-0 z-0 w-full h-full">
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%]">
           <iframe 
@@ -26,23 +30,18 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onOpenModal }) => {
         </div>
       </div>
 
-      {/* Foreground Content Layer */}
-      {/* Adjusted vertical positioning: mt-12 moves content UP by ~48px */}
       <div className="relative z-10 flex flex-col items-center text-center px-4 w-full max-w-[900px] mt-12 space-y-8">
         
-        {/* Headline */}
         <h1 
-          className="font-bold text-white leading-tight tracking-tight"
+          className="font-bold text-white leading-tight tracking-tight whitespace-pre-line"
           style={{ 
             fontSize: '3rem', 
             textShadow: '0 2px 4px rgba(0,0,0,0.6)' 
           }}
         >
-          A 24/7 AI Agent That Never Misses a Lead<br />
-          100% Qualification Consistency
+          {t.hero.headline}
         </h1>
 
-        {/* CTA Button */}
         <div className="pt-4">
           <button
             onClick={onOpenModal}
@@ -52,7 +51,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onOpenModal }) => {
               boxShadow: '0 0 25px rgba(0, 255, 65, 0.6)'
             }}
           >
-            TEST OUR AI NOW
+            {t.hero.cta}
           </button>
         </div>
       </div>

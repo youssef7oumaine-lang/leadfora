@@ -1,10 +1,11 @@
+
 import React, { useEffect, useState, useRef, useMemo } from 'react';
+import { useTranslation } from '../LanguageContext';
 
 interface ProblemSectionProps {
   onOpenModal: () => void;
 }
 
-// --- CSS Animation Styles ---
 const styles = `
   @keyframes float-slow {
     0%, 100% { transform: translate(0, 0); }
@@ -40,8 +41,6 @@ const styles = `
   .animate-spin-slow { animation: spin-slow 12s linear infinite; }
 `;
 
-// --- Hooks ---
-
 const useCounter = (end: number, duration: number = 2000, start: boolean) => {
   const [count, setCount] = useState(0);
 
@@ -51,7 +50,6 @@ const useCounter = (end: number, duration: number = 2000, start: boolean) => {
     const step = (timestamp: number) => {
       if (!startTime) startTime = timestamp;
       const progress = Math.min((timestamp - startTime) / duration, 1);
-      // Ease out quart
       const ease = 1 - Math.pow(1 - progress, 4);
       setCount(Math.floor(ease * end));
       if (progress < 1) {
@@ -75,10 +73,7 @@ const useLiveLossCounter = () => {
   return count;
 };
 
-// --- Sub-Components ---
-
 const BackgroundParticles = () => {
-  // Create static arrays for particles to avoid re-renders
   const particles = useMemo(() => [...Array(25)].map((_, i) => ({
     left: `${Math.random() * 100}%`,
     top: `${Math.random() * 100}%`,
@@ -90,16 +85,11 @@ const BackgroundParticles = () => {
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-      {/* Animated Radial Pulse Overlay */}
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="w-[80vw] h-[80vw] bg-cyan-500/5 rounded-full blur-3xl animate-pulse-glow" />
       </div>
-
-      {/* Floating Orbs */}
       <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-cyan-300/10 rounded-full blur-3xl animate-float-slow" />
       <div className="absolute bottom-1/3 right-1/4 w-96 h-96 bg-emerald-300/10 rounded-full blur-3xl animate-float-medium" />
-
-      {/* Micro Particles */}
       {particles.map((p, i) => (
         <div
           key={i}
@@ -120,10 +110,13 @@ interface StatCardProps {
   item: any;
   index: number;
   isVisible: boolean;
+  numberValue: number;
+  suffix: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ item, index, isVisible }) => {
-  const count = useCounter(item.numberValue, 2500, isVisible);
+const StatCard: React.FC<StatCardProps> = ({ item, index, isVisible, numberValue, suffix }) => {
+  const count = useCounter(numberValue, 2500, isVisible);
+  const { isRTL } = useTranslation();
   
   return (
     <div 
@@ -136,16 +129,11 @@ const StatCard: React.FC<StatCardProps> = ({ item, index, isVisible }) => {
         willChange: 'transform, opacity'
       }}
     >
-      {/* Card Container */}
       <div className="relative p-[1px] rounded-2xl overflow-hidden transition-transform duration-500 hover:-translate-y-2 will-change-transform h-full">
-        {/* Gradient Border Background */}
         <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/30 via-slate-800 to-emerald-500/30 opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
-        
-        {/* Glass Content */}
         <div className="relative h-full bg-[#0F172A]/90 backdrop-blur-xl rounded-2xl p-8 shadow-[0_20px_50px_rgba(0,0,0,0.2)] group-hover:shadow-[0_0_40px_rgba(6,182,212,0.15)] transition-shadow duration-500">
           
-          {/* Icon (Top Right) */}
-          <div className="absolute top-6 right-6">
+          <div className={`absolute top-6 ${isRTL ? 'left-6' : 'right-6'}`}>
             <div className="relative w-12 h-12 flex items-center justify-center">
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-400/20 to-emerald-400/20 animate-pulse"></div>
               <div className="absolute inset-0 rounded-full border border-cyan-500/30 animate-spin-slow group-hover:animate-[spin_2s_linear_infinite] transition-all"></div>
@@ -155,7 +143,6 @@ const StatCard: React.FC<StatCardProps> = ({ item, index, isVisible }) => {
             </div>
           </div>
 
-          {/* Stat Number */}
           <div className="mb-2 relative">
             <span 
               className="text-[64px] leading-none font-black text-transparent bg-clip-text bg-gradient-to-r from-[#00D9FF] to-[#00FF41]"
@@ -164,21 +151,18 @@ const StatCard: React.FC<StatCardProps> = ({ item, index, isVisible }) => {
                 fontFamily: 'Outfit, sans-serif' 
               }}
             >
-              {count}{item.suffix}
+              {count}{suffix}
             </span>
           </div>
 
-          {/* Title */}
           <h3 className="text-xl font-bold text-white mb-3 group-hover:text-cyan-300 transition-colors">
             {item.title}
           </h3>
 
-          {/* Description */}
           <p className="text-slate-300 text-sm leading-relaxed mb-6 font-light">
             {item.text}
           </p>
 
-          {/* Source */}
           <div className="mt-auto pt-4 border-t border-white/5">
              <p className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
                Insight: <span className="text-slate-400 normal-case font-normal italic">{item.insight}</span>
@@ -190,12 +174,11 @@ const StatCard: React.FC<StatCardProps> = ({ item, index, isVisible }) => {
   );
 };
 
-// --- Main Component ---
-
 const ProblemSection: React.FC<ProblemSectionProps> = ({ onOpenModal }) => {
   const sectionRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
   const liveLoss = useLiveLossCounter();
+  const { t, isRTL } = useTranslation();
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -207,63 +190,45 @@ const ProblemSection: React.FC<ProblemSectionProps> = ({ onOpenModal }) => {
       },
       { threshold: 0.15 }
     );
-
     if (sectionRef.current) {
       observer.observe(sectionRef.current);
     }
-
     return () => observer.disconnect();
   }, []);
 
-  const cards = [
-    {
-      title: "The 5-Minute Golden Window",
-      numberValue: 100,
-      suffix: "x",
-      text: "More likely to convert leads when responding within 5 minutes vs. 30 minutes.",
-      insight: "Harvard Business Review",
-      icon: (
+  const icons = [
+      (
         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-      )
-    },
-    {
-      title: "The Rapid Lead Decay",
-      numberValue: 80,
-      suffix: "%",
-      text: "Contact odds DROP immediately after the first 5 minutes. Speed is the only variable that matters.",
-      insight: "InsideSales.com Research",
-      icon: (
+      ),
+      (
         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
         </svg>
-      )
-    },
-    {
-      title: "The First Responder Wins",
-      numberValue: 78,
-      suffix: "%",
-      text: "Of converted leads go to the vendor that responds FIRST, regardless of price or feature set.",
-      insight: "LeadSimple Benchmark Report",
-      icon: (
+      ),
+      (
         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-      )
-    },
-    {
-      title: "Qualification Multiplier",
-      numberValue: 21,
-      suffix: "x",
-      text: "Increase in qualification rates when leads are contacted within the first 5 minutes.",
-      insight: "MIT Lead Response Study",
-      icon: (
+      ),
+      (
         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4 4-6 6" />
         </svg>
       )
-    }
+  ];
+
+  const cardData = t.problem.cards.map((card, index) => ({
+    ...card,
+    icon: icons[index]
+  }));
+
+  const cardStats = [
+      { num: 100, suff: 'x' },
+      { num: 80, suff: '%' },
+      { num: 78, suff: '%' },
+      { num: 21, suff: 'x' }
   ];
 
   return (
@@ -273,68 +238,51 @@ const ProblemSection: React.FC<ProblemSectionProps> = ({ onOpenModal }) => {
       style={{
         background: 'linear-gradient(to bottom, #E2E8F0 0%, #F8FAFC 20%, #FFFFFF 100%)'
       }}
+      dir={isRTL ? 'rtl' : 'ltr'}
     >
       <style>{styles}</style>
-      
       <BackgroundParticles />
-
       <div className="relative max-w-6xl mx-auto z-10">
         
-        {/* Section Header */}
         <div className="text-center mb-16 max-w-4xl mx-auto">
           
-          {/* Live Counter Badge */}
           <div className={`
             inline-flex items-center gap-2 bg-red-100 border border-red-200 px-4 py-1.5 rounded-full mb-8
             transform transition-all duration-700 ${isVisible ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'}
           `}>
             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
             <p className="text-xs font-mono font-bold text-red-600">
-              LEADS LOST GLOBALLY RIGHT NOW: {liveLoss.toLocaleString()}
+              {t.problem.live_loss}: {liveLoss.toLocaleString()}
             </p>
           </div>
 
-          {/* Animated Headline */}
           <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4 tracking-tight">
-            {`Your Leads Are Disappearing While You Sleep`.split(" ").map((word, i) => (
-              <span 
-                key={i} 
-                className="inline-block mr-3"
-                style={{
-                  animation: isVisible ? `glitch-entry 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards` : 'none',
-                  opacity: 0,
-                  animationDelay: `${i * 100}ms`
-                }}
-              >
-                {word}
-              </span>
-            ))}
+             {t.problem.headline}
           </h2>
 
-          {/* Subheadline */}
           <div 
             className={`transition-all duration-1000 delay-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
           >
              <p className="text-lg md:text-xl text-slate-600 font-medium relative inline-block">
-               Not responding in 5 minutes? They're already talking to your competitor.
-               <span className={`absolute -bottom-2 left-0 h-[2px] bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-[1500ms] ease-out ${isVisible ? 'w-full' : 'w-0'}`}></span>
+               {t.problem.subheadline}
+               <span className={`absolute -bottom-2 ${isRTL ? 'right-0' : 'left-0'} h-[2px] bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-[1500ms] ease-out ${isVisible ? 'w-full' : 'w-0'}`}></span>
              </p>
           </div>
         </div>
 
-        {/* Grid Container (2x2 Layout) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-          {cards.map((card, idx) => (
+          {cardData.map((card, idx) => (
             <StatCard 
               key={idx} 
               item={card} 
               index={idx} 
               isVisible={isVisible} 
+              numberValue={cardStats[idx].num}
+              suffix={cardStats[idx].suff}
             />
           ))}
         </div>
 
-        {/* Bottom CTA */}
         <div className="text-center mt-16">
           <button
             onClick={onOpenModal}
@@ -344,7 +292,7 @@ const ProblemSection: React.FC<ProblemSectionProps> = ({ onOpenModal }) => {
               boxShadow: '0 0 30px rgba(0, 255, 65, 0.5)'
             }}
           >
-            <span className="relative z-10 group-hover:brightness-125 transition-all">Stop Losing Leads. Deploy AI Now.</span>
+            <span className="relative z-10 group-hover:brightness-125 transition-all">{t.problem.cta}</span>
             <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 skew-y-12"></div>
           </button>
         </div>

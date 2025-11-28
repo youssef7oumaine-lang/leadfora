@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState, useRef } from 'react';
+import { useTranslation } from '../LanguageContext';
 
 interface GlobalReachSectionProps {
   onOpenModal?: () => void;
@@ -58,6 +59,7 @@ const languagesRow2 = [
 const GlobalReachSection: React.FC<GlobalReachSectionProps> = ({ onOpenModal }) => {
   const sectionRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const { t, isRTL } = useTranslation();
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -69,7 +71,6 @@ const GlobalReachSection: React.FC<GlobalReachSectionProps> = ({ onOpenModal }) 
       },
       { threshold: 0.15 }
     );
-
     if (sectionRef.current) {
       observer.observe(sectionRef.current);
     }
@@ -81,31 +82,30 @@ const GlobalReachSection: React.FC<GlobalReachSectionProps> = ({ onOpenModal }) 
       id="languages"
       ref={sectionRef}
       className="relative w-full py-24 px-4 overflow-hidden border-t border-slate-200 scroll-mt-28 bg-[#F8FAFC]"
+      dir={isRTL ? 'rtl' : 'ltr'}
     >
       <style>{styles}</style>
 
       <div className="relative max-w-7xl mx-auto z-10">
         
-        {/* Section Header */}
         <div className="text-center mb-16 max-w-4xl mx-auto">
           <h2 
             className={`text-4xl md:text-5xl font-bold text-slate-900 mb-4 tracking-tight transition-all duration-700 transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
           >
-            Speak the Language of Every Buyer.
+            {t.global.headline}
           </h2>
           <p 
             className={`text-lg md:text-xl text-slate-600 max-w-2xl mx-auto transition-all duration-700 delay-200 transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
           >
-            From Mandarin to Khaleeji Arabic, our AI switches languages instantly so you never miss an international investor.
+            {t.global.subheadline}
           </p>
         </div>
 
-        {/* Trust Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
           {[
-            { val: '30+', label: 'Languages & Dialects', color: 'text-[#06B6D4]' },
-            { val: '$2.5B+', label: 'Intl. Sales Enabled', color: 'text-[#10B981]' },
-            { val: '5s', label: 'Avg Switching Time', color: 'text-[#06B6D4]' }
+            { val: '30+', label: t.global.stats.languages, color: 'text-[#06B6D4]' },
+            { val: '$2.5B+', label: t.global.stats.sales, color: 'text-[#10B981]' },
+            { val: '5s', label: t.global.stats.switching, color: 'text-[#06B6D4]' }
           ].map((stat, idx) => (
              <div 
                key={idx}
@@ -118,13 +118,10 @@ const GlobalReachSection: React.FC<GlobalReachSectionProps> = ({ onOpenModal }) 
           ))}
         </div>
 
-        {/* Dual Marquees */}
         <div className="relative py-10 space-y-6">
-           {/* Side Fade Overlays - Color Matched to Section BG #F8FAFC */}
            <div className="absolute left-0 top-0 bottom-0 w-20 md:w-40 bg-gradient-to-r from-[#F8FAFC] to-transparent z-20 pointer-events-none" />
            <div className="absolute right-0 top-0 bottom-0 w-20 md:w-40 bg-gradient-to-l from-[#F8FAFC] to-transparent z-20 pointer-events-none" />
 
-           {/* Row 1 (Left) */}
            <div className="marquee-row overflow-hidden w-full">
              <div className="marquee-inner flex gap-6 w-max animate-scroll-left py-2">
                {[...languagesRow1, ...languagesRow1, ...languagesRow1].map((lang, idx) => (
@@ -143,7 +140,6 @@ const GlobalReachSection: React.FC<GlobalReachSectionProps> = ({ onOpenModal }) 
              </div>
            </div>
 
-           {/* Row 2 (Right) */}
            <div className="marquee-row overflow-hidden w-full">
              <div className="marquee-inner flex gap-6 w-max animate-scroll-right py-2">
                {[...languagesRow2, ...languagesRow2, ...languagesRow2].map((lang, idx) => (
@@ -163,16 +159,13 @@ const GlobalReachSection: React.FC<GlobalReachSectionProps> = ({ onOpenModal }) 
            </div>
         </div>
 
-        {/* Bottom Copy */}
         <div 
           className={`text-center mt-16 transition-all duration-1000 delay-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
         >
            <p className="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed font-medium">
-             Your buyers speak 30+ languages. Our AI speaks all of them. <br className="hidden md:block"/>
-             Native fluency. Cultural context. Zero translation lag. Just results.
+             {t.global.bottom_text}
            </p>
         </div>
-
       </div>
     </section>
   );

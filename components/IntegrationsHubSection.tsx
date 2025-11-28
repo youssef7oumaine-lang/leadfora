@@ -1,11 +1,11 @@
 
 import React from 'react';
+import { useTranslation } from '../LanguageContext';
 
 interface IntegrationsHubSectionProps {
   id?: string;
 }
 
-// --- Assets: CRM / Tech Logos (SVG) ---
 const icons = {
   hubspot: (
     <svg viewBox="0 0 24 24" fill="#ff7a59">
@@ -49,15 +49,9 @@ const icons = {
     <svg viewBox="0 0 24 24" fill="currentColor">
       <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
     </svg>
-  ),
-  leadfora: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-    </svg>
   )
 };
 
-// --- Data: Integration Cards ---
 const integrations = [
   { id: 'hubspot', name: 'HubSpot', color: 'text-[#FF7A59]', icon: icons.hubspot, latency: '24ms', type: '2-Way Sync' },
   { id: 'salesforce', name: 'Salesforce', color: 'text-[#00A1E0]', icon: icons.salesforce, latency: '18ms', type: 'Enterprise API' },
@@ -71,8 +65,6 @@ const integrations = [
 
 const IntegrationCard = ({ item }: { item: any }) => (
   <div className="bg-white border-2 border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-300 hover:border-slate-300 flex flex-col justify-between h-36 relative overflow-hidden group">
-    
-    {/* Header */}
     <div className="flex justify-between items-start z-10">
       <div className={`w-8 h-8 ${item.color} transform transition-all duration-300 ease-out group-hover:scale-110 group-hover:-translate-y-1 group-hover:drop-shadow-md`}>
         {item.icon}
@@ -82,8 +74,6 @@ const IntegrationCard = ({ item }: { item: any }) => (
         <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Active</span>
       </div>
     </div>
-
-    {/* Footer / Telemetry */}
     <div className="z-10">
       <h4 className="font-bold text-slate-800 text-sm mb-1">{item.name}</h4>
       <div className="flex items-center gap-3 border-t border-slate-100 pt-2">
@@ -91,15 +81,19 @@ const IntegrationCard = ({ item }: { item: any }) => (
          <span className="font-mono text-[9px] text-slate-400">TYPE: <span className="text-slate-600">{item.type}</span></span>
       </div>
     </div>
-
-    {/* Decorative Scan Line */}
     <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-300 to-transparent -translate-x-full group-hover:animate-[scan-fast_1.5s_linear_infinite]" />
   </div>
 );
 
 const IntegrationsHubSection: React.FC<IntegrationsHubSectionProps> = () => {
+  const { t, isRTL } = useTranslation();
+
   return (
-    <section id="integrations" className="relative w-full py-28 bg-[#F8FAFC] scroll-mt-28">
+    <section 
+      id="integrations" 
+      className="relative w-full py-28 bg-[#F8FAFC] scroll-mt-28"
+      dir={isRTL ? 'rtl' : 'ltr'}
+    >
       <style>{`
         @keyframes scan-fast {
           0% { transform: translateX(-100%); }
@@ -115,35 +109,24 @@ const IntegrationsHubSection: React.FC<IntegrationsHubSectionProps> = () => {
       
       <div className="relative max-w-7xl mx-auto px-6">
         
-        {/* Headline */}
         <div className="text-center mb-16 max-w-3xl mx-auto">
           <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4 tracking-tight">
-            We Work With Your Current Tools.
+            {t.integrations.headline}
           </h2>
           <p className="text-lg text-slate-500 font-medium leading-relaxed">
-            Keep your CRM. Keep your workflow. We simply install our AI Engine on top of your existing stack.
+            {t.integrations.subheadline}
           </p>
         </div>
 
-        {/* BENTO GRID */}
-        {/* Mobile: Stacked, Desktop: 4 Columns */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-5xl mx-auto">
-
-          {/* Row 1 */}
-          <IntegrationCard item={integrations[0]} /> {/* HubSpot */}
-          <IntegrationCard item={integrations[1]} /> {/* Salesforce */}
-          <IntegrationCard item={integrations[2]} /> {/* Zoho */}
-          <IntegrationCard item={integrations[3]} /> {/* Pipedrive */}
-
-          {/* Row 2 */}
-          <IntegrationCard item={integrations[4]} /> {/* Outlook */}
+          <IntegrationCard item={integrations[0]} />
+          <IntegrationCard item={integrations[1]} />
+          <IntegrationCard item={integrations[2]} />
+          <IntegrationCard item={integrations[3]} />
+          <IntegrationCard item={integrations[4]} />
           
-          {/* CENTERPIECE: LeadFora Host (Spans 2 cols, 2 rows) */}
           <div className="col-span-2 row-span-2 bg-white rounded-2xl border-2 border-slate-200 relative overflow-hidden shadow-xl flex flex-col items-center justify-center group">
-            {/* Glowing Border Effect */}
             <div className="absolute inset-0 border-2 border-cyan-400/0 group-hover:border-cyan-400/50 transition-colors duration-500 rounded-2xl pointer-events-none z-20"></div>
-            
-            {/* Animated Grid Background */}
             <div 
                 className="absolute inset-0 opacity-5"
                 style={{ 
@@ -151,51 +134,33 @@ const IntegrationsHubSection: React.FC<IntegrationsHubSectionProps> = () => {
                     backgroundSize: '20px 20px' 
                 }}
             />
-
-            {/* Central Content */}
             <div className="relative z-10 flex flex-col items-center text-center p-8 w-full">
-               
-               {/* Label */}
-               <h3 className="text-xl font-bold text-slate-900 tracking-tight mb-8">LeadFora Engine</h3>
-
-               {/* Visual Pipeline Animation */}
+               <h3 className="text-xl font-bold text-slate-900 tracking-tight mb-8">{t.integrations.engine_label}</h3>
                <div className="w-full max-w-[240px] h-16 relative flex items-center justify-between mb-8">
-                  {/* Left: Lead */}
                   <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center z-10">
                      <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                      </svg>
                   </div>
-
-                  {/* Connecting Line */}
                   <div className="absolute left-6 right-6 top-1/2 h-[2px] bg-slate-100 -z-0">
-                     {/* Flowing Dot */}
                      <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-gradient-to-r from-cyan-400 to-emerald-400 rounded-full shadow-[0_0_10px_rgba(6,182,212,0.6)] animate-[pipeline-flow_2s_linear_infinite]" />
                   </div>
-
-                  {/* Right: CRM/Data */}
                   <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center z-10">
                      <svg className="w-6 h-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                      </svg>
                   </div>
                </div>
-
-               {/* Bottom Label */}
                <div className="px-4 py-2 bg-cyan-500/5 rounded-full border border-cyan-500/10">
-                  <span className="text-sm font-bold text-cyan-500 tracking-wide">Zero Manual Entry</span>
+                  <span className="text-sm font-bold text-cyan-500 tracking-wide">{t.integrations.zero_entry}</span>
                </div>
             </div>
           </div>
 
-          <IntegrationCard item={integrations[5]} /> {/* Google */}
-
-          {/* Row 3 */}
-          <IntegrationCard item={integrations[6]} /> {/* WhatsApp */}
-          <IntegrationCard item={integrations[7]} /> {/* Zapier */}
-
+          <IntegrationCard item={integrations[5]} />
+          <IntegrationCard item={integrations[6]} />
+          <IntegrationCard item={integrations[7]} />
         </div>
-
       </div>
     </section>
   );

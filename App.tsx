@@ -10,8 +10,9 @@ import IntegrationsHubSection from './components/IntegrationsHubSection';
 import GlobalReachSection from './components/GlobalReachSection';
 import ChatBotWidget from './components/ChatBotWidget';
 import Footer from './components/Footer';
+import { LanguageProvider } from './LanguageContext';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMode, setChatMode] = useState<'chat' | 'voice'>('chat');
@@ -30,19 +31,12 @@ const App: React.FC = () => {
     setIsModalOpen(false);
   };
 
-  const handleFormSuccess = (data?: {name: string}) => {
-    if (data) setLeadData(data);
-    setIsModalOpen(false);
-    setChatMode('voice');
-    setIsChatOpen(true);
-  };
-
   const toggleChat = () => {
     setIsChatOpen(prev => !prev);
   };
 
   return (
-    <main className="bg-[#F8FAFC] min-h-screen">
+    <main className="bg-[#F8FAFC] min-h-screen font-sans">
       <Navbar 
         onOpenModal={handleOpenModal} 
         onToggleChat={toggleChat}
@@ -67,9 +61,16 @@ const App: React.FC = () => {
       <LeadCaptureModal 
         isOpen={isModalOpen} 
         onClose={handleCloseModal} 
-        onSuccess={handleFormSuccess}
       />
     </main>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <LanguageProvider>
+      <AppContent />
+    </LanguageProvider>
   );
 };
 
