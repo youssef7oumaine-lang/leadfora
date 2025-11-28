@@ -122,7 +122,8 @@ const GlobalReachSection: React.FC<GlobalReachSectionProps> = ({ onOpenModal }) 
            <div className="absolute left-0 top-0 bottom-0 w-20 md:w-40 bg-gradient-to-r from-[#F8FAFC] to-transparent z-20 pointer-events-none" />
            <div className="absolute right-0 top-0 bottom-0 w-20 md:w-40 bg-gradient-to-l from-[#F8FAFC] to-transparent z-20 pointer-events-none" />
 
-           <div className="marquee-row overflow-hidden w-full">
+           {/* Row 1 - Forced LTR to fix RTL scroll bug */}
+           <div className="marquee-row overflow-hidden w-full" dir="ltr">
              <div className="marquee-inner flex gap-6 w-max animate-scroll-left py-2">
                {[...languagesRow1, ...languagesRow1, ...languagesRow1].map((lang, idx) => (
                  <div 
@@ -140,7 +141,8 @@ const GlobalReachSection: React.FC<GlobalReachSectionProps> = ({ onOpenModal }) 
              </div>
            </div>
 
-           <div className="marquee-row overflow-hidden w-full">
+           {/* Row 2 - Forced LTR to fix RTL scroll bug */}
+           <div className="marquee-row overflow-hidden w-full" dir="ltr">
              <div className="marquee-inner flex gap-6 w-max animate-scroll-right py-2">
                {[...languagesRow2, ...languagesRow2, ...languagesRow2].map((lang, idx) => (
                  <div 
