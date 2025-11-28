@@ -176,7 +176,10 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-[90] flex flex-col items-end">
+    <div 
+      className="fixed bottom-6 right-6 z-[90] flex flex-col items-end"
+      dir="ltr"
+    >
       
       {/* Proactive Chat Invitation Bubble */}
       {!isOpen && showGreeting && (
