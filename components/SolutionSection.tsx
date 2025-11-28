@@ -98,7 +98,7 @@ const SolutionSection: React.FC<SolutionSectionProps> = ({ onOpenModal }) => {
     <section 
       id="services"
       ref={sectionRef}
-      className="relative w-full py-24 px-4 overflow-hidden scroll-mt-28"
+      className="relative w-full py-20 px-4 overflow-hidden scroll-mt-28"
       style={{
         background: 'linear-gradient(to bottom, #FFFFFF 0%, #F8FAFC 100%)'
       }}

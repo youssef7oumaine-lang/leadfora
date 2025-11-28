@@ -81,7 +81,7 @@ const GlobalReachSection: React.FC<GlobalReachSectionProps> = ({ onOpenModal }) 
     <section 
       id="languages"
       ref={sectionRef}
-      className="relative w-full py-24 px-4 overflow-hidden border-t border-slate-200 scroll-mt-28 bg-[#F8FAFC]"
+      className="relative w-full py-20 px-4 overflow-hidden border-t border-slate-200 scroll-mt-28 bg-[#F8FAFC]"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       <style>{styles}</style>

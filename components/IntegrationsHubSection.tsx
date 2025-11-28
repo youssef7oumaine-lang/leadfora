@@ -91,7 +91,7 @@ const IntegrationsHubSection: React.FC<IntegrationsHubSectionProps> = () => {
   return (
     <section 
       id="integrations" 
-      className="relative w-full py-28 bg-[#F8FAFC] scroll-mt-28"
+      className="relative w-full py-20 bg-[#F8FAFC] scroll-mt-28"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       <style>{`

@@ -31,7 +31,7 @@ const Footer: React.FC = () => {
 
   return (
     <footer 
-      className="relative w-full pt-20 pb-10 overflow-hidden border-t border-white/10 bg-[#0F172A]"
+      className="relative w-full pt-16 pb-8 overflow-hidden border-t border-white/10 bg-[#0F172A]"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       <style>{styles}</style>

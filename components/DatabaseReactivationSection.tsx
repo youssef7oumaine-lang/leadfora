@@ -46,7 +46,7 @@ const DatabaseReactivationSection: React.FC<DatabaseReactivationSectionProps> = 
 
   return (
     <section 
-      className="relative w-full py-24 bg-[#F8FAFC] overflow-hidden font-sans"
+      className="relative w-full py-20 bg-[#F8FAFC] overflow-hidden font-sans"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       <div className="relative z-10 max-w-7xl mx-auto px-6">

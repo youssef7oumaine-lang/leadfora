@@ -234,7 +234,7 @@ const ProblemSection: React.FC<ProblemSectionProps> = ({ onOpenModal }) => {
   return (
     <section 
       ref={sectionRef}
-      className="relative w-full pt-16 pb-32 px-6 overflow-hidden"
+      className="relative w-full pt-12 pb-24 px-6 overflow-hidden"
       style={{
         background: 'linear-gradient(to bottom, #E2E8F0 0%, #F8FAFC 20%, #FFFFFF 100%)'
       }}
