@@ -10,6 +10,7 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ onOpenModal, onToggleChat }) => {
   const [isVisible, setIsVisible] = useState(true);
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
+  const [isTop, setIsTop] = useState(true);
   const lastScrollY = useRef(0);
   const { t, language, setLanguage, isRTL } = useTranslation();
 
@@ -24,6 +25,8 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenModal, onToggleChat }) => {
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
+      
+      // Handle visibility (hide on scroll down)
       if (currentScrollY < 0) return;
       if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
         setIsVisible(false);
@@ -31,6 +34,9 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenModal, onToggleChat }) => {
         setIsVisible(true);
       }
       lastScrollY.current = currentScrollY;
+
+      // Handle Top/Scrolled state
+      setIsTop(currentScrollY < 50);
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
@@ -59,25 +65,25 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenModal, onToggleChat }) => {
         isVisible ? 'translate-y-0' : '-translate-y-full'
       }`}
       style={{
-        background: window.scrollY < 50 ? 'transparent' : 'rgba(255, 255, 255, 0.8)',
-        backdropFilter: window.scrollY < 50 ? 'none' : 'blur(12px)',
-        borderBottom: window.scrollY < 50 ? 'none' : '1px solid rgba(15, 23, 42, 0.05)'
+        background: isTop ? 'transparent' : 'rgba(255, 255, 255, 0.8)',
+        backdropFilter: isTop ? 'none' : 'blur(12px)',
+        borderBottom: isTop ? 'none' : '1px solid rgba(15, 23, 42, 0.05)'
       }}
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       <div className="w-full max-w-7xl mx-auto h-full flex items-center justify-between">
-        {/* Logo Text - Minimalist Luxury Update */}
+        {/* Logo Text - Minimalist Luxury Update (Dark Text Forced) */}
         <div 
           className="flex items-center cursor-pointer"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         >
-           <h1 className={`text-2xl font-light tracking-wide flex items-center gap-1.5 transition-colors duration-300 ${window.scrollY < 50 ? 'text-white' : 'text-slate-900'}`}>
+           <h1 className="text-2xl font-light tracking-wide flex items-center gap-1.5 transition-colors duration-300 text-slate-900">
              <span>Wolfz</span>
              <span>AI</span>
            </h1>
         </div>
 
-        {/* Navigation Links */}
+        {/* Navigation Links - Dark Text Forced */}
         <div className="hidden md:flex items-center gap-8">
           <a href="#" onClick={handleHomeClick} className="text-sm font-medium transition-colors hover:text-cyan-500 text-slate-900">
             {t.navbar.home}
@@ -94,10 +100,18 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenModal, onToggleChat }) => {
           
           <button 
             onClick={onToggleChat}
-            className={`flex items-center gap-1.5 text-sm font-bold transition-all hover:scale-105 ${window.scrollY < 50 ? 'text-cyan-300' : 'text-cyan-600'}`}
-            style={{ textShadow: window.scrollY < 50 ? '0 0 10px rgba(6,182,212,0.5)' : 'none' }}
+            className={`flex items-center gap-1.5 text-sm font-bold transition-all hover:scale-105 ${
+              isTop 
+                ? 'text-transparent bg-clip-text bg-gradient-to-r from-[#00D9FF] to-[#00FF41]' 
+                : 'text-slate-900 hover:text-cyan-600'
+            }`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              viewBox="0 0 24 24" 
+              fill="currentColor" 
+              className={`w-4 h-4 ${isTop ? 'text-[#00D9FF]' : 'text-slate-900 group-hover:text-cyan-600'}`}
+            >
               <path fillRule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576l.813-2.846A.75.75 0 019 4.5zM9 15a.75.75 0 01.75.75v1.5h1.5a.75.75 0 010 1.5h-1.5v1.5a.75.75 0 01-1.5 0v-1.5h-1.5a.75.75 0 010-1.5h1.5v-1.5A.75.75 0 019 15z" clipRule="evenodd" />
             </svg>
             {t.navbar.ask_ai}
@@ -105,16 +119,13 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenModal, onToggleChat }) => {
         </div>
 
         <div className="flex items-center gap-4">
-          {/* Language Switcher - Refined Flag Style */}
+          {/* Language Switcher - Refined Flag Style (Dark Text Forced) */}
           <div className="relative">
             <button
               onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
               className={`
                 flex items-center gap-2 pr-3 pl-2 py-2 rounded-full border transition-all duration-300 group
-                ${window.scrollY < 50 
-                  ? 'bg-white/5 border-white/20 hover:bg-white/10 hover:border-cyan-400/60 hover:shadow-[0_0_15px_rgba(6,182,212,0.3)]' 
-                  : 'bg-transparent border-slate-200 hover:border-cyan-500 hover:shadow-[0_0_15px_rgba(6,182,212,0.15)] hover:bg-slate-50'
-                }
+                bg-transparent border-slate-200 hover:border-cyan-500 hover:shadow-[0_0_15px_rgba(6,182,212,0.15)] hover:bg-slate-50
               `}
             >
               <img 
@@ -123,7 +134,7 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenModal, onToggleChat }) => {
                 className="w-5 h-5 rounded-full object-cover shadow-sm"
               />
               <svg 
-                className={`w-3 h-3 transition-transform duration-300 ${isLangMenuOpen ? 'rotate-180' : ''} ${window.scrollY < 50 ? 'text-white/80' : 'text-slate-400 group-hover:text-cyan-500'}`} 
+                className={`w-3 h-3 transition-transform duration-300 ${isLangMenuOpen ? 'rotate-180' : ''} text-slate-900 group-hover:text-cyan-500`} 
                 fill="none" 
                 viewBox="0 0 24 24" 
                 stroke="currentColor"
@@ -166,7 +177,7 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenModal, onToggleChat }) => {
             )}
           </div>
 
-          {/* CTA Button */}
+          {/* CTA Button - Preserved Gradient */}
           <button
             onClick={onOpenModal}
             className="px-6 py-2.5 rounded-full font-bold text-white text-sm transition-all duration-300 hover:scale-105 hover:brightness-125 focus:outline-none shadow-lg whitespace-nowrap"
