@@ -11,14 +11,15 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onOpenModal }) => {
 
   return (
     <section 
-      className="relative w-full h-screen min-h-[600px] flex flex-col items-center justify-center overflow-hidden"
+      className="relative w-full h-screen min-h-[600px] flex flex-col items-center justify-center overflow-hidden pt-20"
       style={{
         background: 'linear-gradient(to bottom, #F8FAFC 0%, #E2E8F0 100%)'
       }}
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       <div className="absolute inset-0 z-0 w-full h-full">
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%]">
+        {/* Adjusted top position to be just below navbar */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] mt-8">
           <iframe 
             src="https://my.spline.design/nexbotrobotcharacterconcept-ttHpNRASgXnCFBdblF6dSka2/" 
             frameBorder="0" 
@@ -30,7 +31,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onOpenModal }) => {
         </div>
       </div>
 
-      <div className="relative z-10 flex flex-col items-center text-center px-4 w-full max-w-[900px] mt-12 space-y-8">
+      <div className="relative z-10 flex flex-col items-center text-center px-4 w-full max-w-[900px] mt-12 -translate-y-8 space-y-8">
         
         <h1 
           className="font-bold text-white leading-tight tracking-tight whitespace-pre-line"
