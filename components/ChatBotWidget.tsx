@@ -29,6 +29,22 @@ const SUGGESTIONS = [
   { label: "📅 Integrations", text: "What CRMs do you integrate with?" }
 ];
 
+// Safely retrieve API Key. 
+// We check if process.env exists (for build tools) or fallback to the provided key.
+const getApiKey = () => {
+  try {
+    if (typeof process !== 'undefined' && process.env?.API_KEY) {
+      return process.env.API_KEY;
+    }
+  } catch (e) {
+    // process is not defined in this environment
+  }
+  // Fallback to the provided key if env var is missing
+  return "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";
+};
+
+const API_KEY = getApiKey();
+
 interface ChatWidgetProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
@@ -86,7 +102,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
   useEffect(() => {
     if (isOpen && !chatSessionRef.current) {
       try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const ai = new GoogleGenAI({ apiKey: API_KEY });
         chatSessionRef.current = ai.chats.create({
           model: 'gemini-2.5-flash',
           config: {
@@ -120,7 +136,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
     try {
       // Re-init session if needed
       if (!chatSessionRef.current) {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const ai = new GoogleGenAI({ apiKey: API_KEY });
         chatSessionRef.current = ai.chats.create({
           model: 'gemini-2.5-flash',
           config: { systemInstruction: SYSTEM_INSTRUCTION }
