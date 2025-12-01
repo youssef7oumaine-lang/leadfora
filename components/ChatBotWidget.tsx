@@ -56,6 +56,7 @@ type Message = {
   text: string;
   sender: 'ai' | 'user';
   timestamp: Date;
+  isError?: boolean;
 };
 
 const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal }) => {
@@ -136,6 +137,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
       // CHECK API KEY TYPE
       if (API_KEY.startsWith('sk-or-')) {
         // --- OPENROUTER API CALL (For the provided key) ---
+        // Using the "free" model identifier which is more likely to work without credits
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -145,7 +147,8 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
             "X-Title": "Wolfz AI Chat"
           },
           body: JSON.stringify({
-            "model": "google/gemini-flash-1.5", // OpenRouter model alias
+            // Trying a free model first, fallback to standard if needed
+            "model": "google/gemini-2.0-flash-lite-preview-02-05:free", 
             "messages": [
               { "role": "system", "content": SYSTEM_INSTRUCTION },
               // Convert history for context (simple last 5 messages for brevity)
@@ -161,6 +164,13 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
         if (!response.ok) {
            const errData = await response.json().catch(() => ({}));
            console.error("OpenRouter Error:", response.status, errData);
+           
+           if (response.status === 401 || response.status === 402) {
+             throw new Error("AUTH_ERROR");
+           }
+           if (response.status === 429) {
+             throw new Error("RATE_LIMIT");
+           }
            throw new Error(`API Error: ${response.status}`);
         }
 
@@ -191,14 +201,24 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
       };
       setMessages(prev => [...prev, newAiMsg]);
 
-    } catch (err) {
+    } catch (err: any) {
       console.error("Chat Error:", err);
+      
+      let errorText = "I'm currently experiencing high traffic. Please try again later or book a demo directly!";
+      
+      if (err.message === "AUTH_ERROR") {
+        errorText = "Authentication failed. Your API Key might be invalid or out of credits (OpenRouter). Please check your key.";
+      } else if (err.message === "RATE_LIMIT") {
+        errorText = "I'm receiving too many requests right now. Please wait a moment.";
+      }
+
       // Fallback Message
       const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
-        text: "I'm currently experiencing high traffic. Please try again later or book a demo directly to speak with our team!",
+        text: errorText,
         sender: 'ai',
-        timestamp: new Date()
+        timestamp: new Date(),
+        isError: true
       };
       setMessages(prev => [...prev, errorMsg]);
     } finally {
@@ -258,7 +278,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
             <div className="flex items-center gap-3">
               <div className="relative">
                 <div className="w-2.5 h-2.5 absolute bottom-0 right-0 bg-green-500 rounded-full border-2 border-slate-900"></div>
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-emerald-500 flex items-center justify-center text-white font-bold shadow-lg">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-emerald-500 flex items-center justify-center text-white font-bold text-sm shadow-lg">
                   AI
                 </div>
               </div>
@@ -286,9 +306,11 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
               >
                 <div 
                   className={`max-w-[85%] p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
-                    msg.sender === 'user' 
-                      ? 'bg-cyan-600 text-white rounded-tr-none' 
-                      : 'bg-slate-700 text-slate-200 rounded-tl-none border border-slate-600'
+                    msg.isError 
+                      ? 'bg-red-900/50 border border-red-500/30 text-red-200 rounded-tl-none'
+                      : msg.sender === 'user' 
+                        ? 'bg-cyan-600 text-white rounded-tr-none' 
+                        : 'bg-slate-700 text-slate-200 rounded-tl-none border border-slate-600'
                   }`}
                 >
                   {msg.text}
