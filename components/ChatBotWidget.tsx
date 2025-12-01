@@ -70,6 +70,10 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
   // Greeting Bubble State
   const [showGreeting, setShowGreeting] = useState(false);
   const [hasDismissedGreeting, setHasDismissedGreeting] = useState(false);
+  
+  // Connection State
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
+  const chatSessionRef = useRef<any>(null);
 
   // Proactive Greeting Timer
   useEffect(() => {
@@ -87,12 +91,20 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping, isOpen]);
 
-  // Gemini Chat Session for Text Mode
-  const [textChatSession, setTextChatSession] = useState<any>(null);
+  // Initialize Gemini Chat Session
+  useEffect(() => {
+    const initChat = async () => {
+        // If we already have a session and the lead name hasn't drastically changed, skip re-init to be safe
+        // But here we want to update persona if leadData changes.
+        
+        if (!process.env.API_KEY) {
+            console.error("CRITICAL ERROR: process.env.API_KEY is missing. Chatbot cannot connect.");
+            setConnectionStatus('error');
+            return;
+        }
 
-  const initChatSession = () => {
-    if (process.env.API_KEY) {
         try {
+            setConnectionStatus('connecting');
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             const chat = ai.chats.create({
               model: 'gemini-2.5-flash',
@@ -100,19 +112,19 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
                 systemInstruction: getSarahPersona(leadData?.name),
               }
             });
-            setTextChatSession(chat);
-            return chat;
-        } catch (error) {
-            console.error("Failed to initialize Text AI", error);
-            return null;
-        }
-    }
-    return null;
-  };
+            
+            chatSessionRef.current = chat;
+            setConnectionStatus('connected');
+            console.log("Wolfz AI: Chat Session Initialized Successfully");
 
-  useEffect(() => {
-    initChatSession();
-  }, [leadData]);
+        } catch (error) {
+            console.error("Wolfz AI: Connection Failed", error);
+            setConnectionStatus('error');
+        }
+    };
+
+    initChat();
+  }, [leadData?.name]);
 
   const handleSendMessage = async (text: string, isDemo: boolean = false) => {
     if (!text.trim()) return;
@@ -122,6 +134,7 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
     setInputValue("");
     setIsTyping(true);
 
+    // Mock response for "Test AI" button
     if (isDemo) {
       setTimeout(() => {
         setIsTyping(false);
@@ -136,16 +149,27 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
       return;
     }
 
+    // Real AI Response
     try {
-      // Use existing session or try to init one immediately
-      let activeSession = textChatSession;
-      if (!activeSession) {
-         activeSession = initChatSession();
+      if (!chatSessionRef.current || connectionStatus === 'error') {
+         // Attempt one quick re-connect if currently disconnected
+         if (process.env.API_KEY) {
+            console.log("Attempting lazy reconnection...");
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            chatSessionRef.current = ai.chats.create({
+              model: 'gemini-2.5-flash',
+              config: { systemInstruction: getSarahPersona(leadData?.name) }
+            });
+            setConnectionStatus('connected');
+         } else {
+             throw new Error("API Key missing during message send");
+         }
       }
 
-      if (activeSession) {
-        const result = await activeSession.sendMessage({ message: text });
+      if (chatSessionRef.current) {
+        const result = await chatSessionRef.current.sendMessage({ message: text });
         const response = result.text;
+        
         setIsTyping(false);
         const aiMsg: Message = { 
           id: Date.now() + 1, 
@@ -153,27 +177,18 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
           sender: 'ai' 
         };
         setMessages(prev => [...prev, aiMsg]);
-      } else {
-         // Fallback if API Key is missing or init fails completely
-         setTimeout(() => {
-            setIsTyping(false);
-            const aiMsg: Message = { 
-                id: Date.now() + 1, 
-                text: "I'm having trouble connecting right now. Please try booking a demo directly!", 
-                sender: 'ai' 
-            };
-            setMessages(prev => [...prev, aiMsg]);
-         }, 1000);
-      }
+      } 
     } catch (error) {
-      console.error(error);
+      console.error("Wolfz AI: Message Send Error", error);
       setIsTyping(false);
+      
       const errorMsg: Message = { 
           id: Date.now() + 1, 
-          text: "Connection error. Please try again.", 
+          text: "I'm having trouble reaching our servers right now. Please try checking your internet connection, or book a demo directly!", 
           sender: 'ai' 
       };
       setMessages(prev => [...prev, errorMsg]);
+      setConnectionStatus('error');
     }
   };
 
@@ -235,14 +250,27 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
           <div className="flex items-center justify-between p-4 bg-slate-900/80 border-b border-cyan-500/20 shrink-0">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="w-2 h-2 absolute bottom-0 right-0 bg-green-500 rounded-full ring-2 ring-slate-900"></div>
+                {/* Status Dot Logic */}
+                <div className={`w-2 h-2 absolute bottom-0 right-0 rounded-full ring-2 ring-slate-900 transition-colors duration-300 ${
+                    connectionStatus === 'connected' ? 'bg-green-500' :
+                    connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' :
+                    'bg-red-500'
+                }`}></div>
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-emerald-500 flex items-center justify-center text-white text-xs font-bold">
                   AI
                 </div>
               </div>
               <div>
                 <h3 className="text-sm font-bold text-white">Sarah (AI Agent)</h3>
-                <span className="text-[10px] text-emerald-400 font-mono">● Online</span>
+                <span className={`text-[10px] font-mono transition-colors duration-300 ${
+                     connectionStatus === 'connected' ? 'text-emerald-400' :
+                     connectionStatus === 'connecting' ? 'text-yellow-400' :
+                     'text-red-400'
+                }`}>
+                    {connectionStatus === 'connected' ? '● Online' : 
+                     connectionStatus === 'connecting' ? '● Connecting...' : 
+                     '● Offline'}
+                </span>
               </div>
             </div>
             
@@ -322,7 +350,7 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
                 <button
                   key={option.id}
                   onClick={() => handleSendMessage(option.question, option.id === 'demo')}
-                  disabled={isTyping}
+                  disabled={isTyping || connectionStatus === 'error'}
                   className="whitespace-nowrap text-xs py-1.5 px-3 rounded-full bg-slate-800 hover:bg-cyan-500/20 border border-slate-700 hover:border-cyan-500/50 text-slate-300 hover:text-cyan-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                 >
                   {option.label}
@@ -337,12 +365,13 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Type a question..."
-                className="flex-1 bg-slate-800 text-white text-sm rounded-lg px-3 py-2 border border-slate-700 focus:border-cyan-500 focus:outline-none placeholder-slate-500"
+                placeholder={connectionStatus === 'error' ? "Connection failed" : "Type a question..."}
+                disabled={connectionStatus === 'error'}
+                className="flex-1 bg-slate-800 text-white text-sm rounded-lg px-3 py-2 border border-slate-700 focus:border-cyan-500 focus:outline-none placeholder-slate-500 disabled:opacity-50"
               />
               <button
                 onClick={() => handleSendMessage(inputValue)}
-                disabled={!inputValue.trim() || isTyping}
+                disabled={!inputValue.trim() || isTyping || connectionStatus === 'error'}
                 className="bg-cyan-500 hover:bg-cyan-400 text-white rounded-lg p-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
