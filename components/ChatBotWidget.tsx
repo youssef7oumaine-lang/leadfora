@@ -30,16 +30,16 @@ const SUGGESTIONS = [
 ];
 
 // Safely retrieve API Key. 
-// We check if process.env exists (for build tools) or fallback to the provided key.
 const getApiKey = () => {
   try {
+    // Check environment variable first
     if (typeof process !== 'undefined' && process.env?.API_KEY) {
       return process.env.API_KEY;
     }
   } catch (e) {
-    // process is not defined in this environment
+    // Ignore error
   }
-  // Fallback to the provided key if env var is missing
+  // Fallback to the user's provided OpenRouter key if env var is missing
   return "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";
 };
 
@@ -70,7 +70,6 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
   ]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   
   // Engagement State
   const [showHook, setShowHook] = useState(false);
@@ -98,9 +97,9 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
     return () => clearTimeout(timer);
   }, [isOpen, hasInteracted]);
 
-  // Initialize Chat Session
+  // Initialize Chat Session (Only for Google SDK)
   useEffect(() => {
-    if (isOpen && !chatSessionRef.current) {
+    if (isOpen && !chatSessionRef.current && API_KEY && !API_KEY.startsWith('sk-or-')) {
       try {
         const ai = new GoogleGenAI({ apiKey: API_KEY });
         chatSessionRef.current = ai.chats.create({
@@ -110,8 +109,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
           }
         });
       } catch (e) {
-        console.error("Failed to initialize chat session", e);
-        setError("System offline");
+        console.error("Failed to initialize Google chat session", e);
       }
     }
   }, [isOpen]);
@@ -130,22 +128,59 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
     setMessages(prev => [...prev, newUserMsg]);
     setInputValue("");
     setIsTyping(true);
-    setError(null);
     setHasInteracted(true);
 
     try {
-      // Re-init session if needed
-      if (!chatSessionRef.current) {
-        const ai = new GoogleGenAI({ apiKey: API_KEY });
-        chatSessionRef.current = ai.chats.create({
-          model: 'gemini-2.5-flash',
-          config: { systemInstruction: SYSTEM_INSTRUCTION }
+      let responseText = "";
+
+      // CHECK API KEY TYPE
+      if (API_KEY.startsWith('sk-or-')) {
+        // --- OPENROUTER API CALL (For the provided key) ---
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${API_KEY}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": window.location.origin, // Required by OpenRouter
+            "X-Title": "Wolfz AI Chat"
+          },
+          body: JSON.stringify({
+            "model": "google/gemini-flash-1.5", // OpenRouter model alias
+            "messages": [
+              { "role": "system", "content": SYSTEM_INSTRUCTION },
+              // Convert history for context (simple last 5 messages for brevity)
+              ...messages.slice(-5).map(m => ({
+                "role": m.sender === 'ai' ? "assistant" : "user",
+                "content": m.text
+              })),
+              { "role": "user", "content": text }
+            ]
+          })
         });
+
+        if (!response.ok) {
+           const errData = await response.json().catch(() => ({}));
+           console.error("OpenRouter Error:", response.status, errData);
+           throw new Error(`API Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        responseText = data.choices?.[0]?.message?.content || "";
+
+      } else {
+        // --- GOOGLE GENAI SDK CALL (For standard Gemini keys) ---
+        if (!chatSessionRef.current) {
+           const ai = new GoogleGenAI({ apiKey: API_KEY });
+           chatSessionRef.current = ai.chats.create({
+             model: 'gemini-2.5-flash',
+             config: { systemInstruction: SYSTEM_INSTRUCTION }
+           });
+        }
+        const result = await chatSessionRef.current.sendMessage({ message: text });
+        responseText = result.text;
       }
 
-      // Send to API
-      const result = await chatSessionRef.current.sendMessage({ message: text });
-      const responseText = result.text;
+      if (!responseText) throw new Error("Empty response");
 
       // Add AI Response
       const newAiMsg: Message = {
