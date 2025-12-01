@@ -2,6 +2,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
 
+// ------------------------------------------------------------------
+// CONFIGURATION & API KEY HANDLING
+// ------------------------------------------------------------------
+
 const SYSTEM_INSTRUCTION = `
 IDENTITY:
 You are Sarah, Wolfz AI's Senior AI Consultant. You are professional, warm, and highly efficient.
@@ -29,19 +33,33 @@ const SUGGESTIONS = [
   { label: "📅 Integrations", text: "What CRMs do you integrate with?" }
 ];
 
-// Safely retrieve API Key from environment only
-const getApiKey = () => {
+// Helper to safely get the API key from various environments
+const getApiKey = (): string | undefined => {
+  // 1. Check for a direct hardcoded key (Useful for debugging)
+  const HARDCODED_KEY = ""; // PASTE YOUR KEY HERE IF ENV VARS FAIL
+  if (HARDCODED_KEY) return HARDCODED_KEY;
+
+  // 2. Check process.env (Standard React/Node)
   try {
     if (typeof process !== 'undefined' && process.env?.API_KEY) {
       return process.env.API_KEY;
     }
-  } catch (e) {
-    // Ignore error
-  }
+  } catch (e) {}
+
+  // 3. Check import.meta.env (Vite/Next.js)
+  try {
+    // @ts-ignore
+    if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_KEY) {
+      // @ts-ignore
+      return import.meta.env.VITE_API_KEY;
+    }
+  } catch (e) {}
+
   return undefined;
 };
 
-const API_KEY = getApiKey();
+const RAW_API_KEY = getApiKey();
+const API_KEY = RAW_API_KEY; // Using raw key for debugging to see all errors
 
 interface ChatWidgetProps {
   isOpen: boolean;
@@ -96,7 +114,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
     return () => clearTimeout(timer);
   }, [isOpen, hasInteracted]);
 
-  // Initialize Chat Session (Only if API Key is present)
+  // Initialize Chat Session
   useEffect(() => {
     if (isOpen && !chatSessionRef.current && API_KEY) {
       try {
@@ -107,35 +125,11 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
             systemInstruction: SYSTEM_INSTRUCTION,
           }
         });
-      } catch (e) {
-        console.error("Failed to initialize Google chat session", e);
+      } catch (e: any) {
+        console.error("Initialization Error:", e);
       }
     }
   }, [isOpen]);
-
-  // --- Fallback Logic for Demo Mode ---
-  const getSimulatedResponse = (text: string) => {
-    const lower = text.toLowerCase();
-    
-    if (lower.includes('price') || lower.includes('cost') || lower.includes('much')) {
-      return "Our pricing is customized based on your lead volume, generally starting from $499/mo. Would you like to book a demo to get a quote?";
-    }
-    if (lower.includes('work') || lower.includes('how')) {
-      return "It's simple: We connect to your CRM. When a new lead arrives, our AI calls them within 10 seconds, qualifies them via natural voice chat, and books appointments instantly.";
-    }
-    if (lower.includes('integration') || lower.includes('crm') || lower.includes('connect')) {
-      return "We integrate natively with HubSpot, Salesforce, Pipedrive, Zoho, and many others. We can also connect via Zapier/Webhooks!";
-    }
-    if (lower.includes('demo') || lower.includes('book')) {
-      return "That's great! You can book a demo directly by clicking the 'Get Demo' button at the top of the page. Our team looks forward to meeting you!";
-    }
-    if (lower.includes('hello') || lower.includes('hi') || lower.includes('hey')) {
-      return "Hello there! Ready to automate your lead qualification? Ask me anything about Wolfz AI.";
-    }
-    
-    // Default fallback
-    return "That's a great question! To give you the most accurate answer for your specific use case, I'd recommend booking a quick 15-min demo with our team.";
-  };
 
   const processMessage = async (text: string) => {
     if (!text.trim()) return;
@@ -154,25 +148,22 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
     setHasInteracted(true);
 
     try {
-      let responseText = "";
-
-      // 2. Try Google GenAI SDK if Key exists
-      if (API_KEY) {
-        if (!chatSessionRef.current) {
-           const ai = new GoogleGenAI({ apiKey: API_KEY });
-           chatSessionRef.current = ai.chats.create({
-             model: 'gemini-2.5-flash',
-             config: { systemInstruction: SYSTEM_INSTRUCTION }
-           });
-        }
-        const result = await chatSessionRef.current.sendMessage({ message: text });
-        responseText = result.text;
-      } else {
-        // Force fallback if no key
-        throw new Error("No API Key configured");
+      if (!API_KEY) {
+        throw new Error("Missing API Key. Please check process.env.API_KEY");
       }
 
-      if (!responseText) throw new Error("Empty response");
+      if (!chatSessionRef.current) {
+         const ai = new GoogleGenAI({ apiKey: API_KEY });
+         chatSessionRef.current = ai.chats.create({
+           model: 'gemini-2.5-flash',
+           config: { systemInstruction: SYSTEM_INSTRUCTION }
+         });
+      }
+      
+      const result = await chatSessionRef.current.sendMessage({ message: text });
+      const responseText = result.text;
+
+      if (!responseText) throw new Error("Empty response from API");
 
       // Add AI Response
       const newAiMsg: Message = {
@@ -184,30 +175,22 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
       setMessages(prev => [...prev, newAiMsg]);
 
     } catch (err: any) {
-      console.warn("Chat API failed or Key missing (using fallback):", err);
+      console.error("Chat API Critical Error:", err);
       
-      // --- DEMO FALLBACK MODE ---
-      // If the API fails (Auth error, No credits, Network issue), 
-      // we gracefully fall back to a simulated response so the user experience isn't broken.
+      // DEBUG MODE: Show exact error to user
+      const errorMessage = `DEBUG ERROR: ${err.message || "Unknown API Error"}. Check console for full details.`;
       
-      setTimeout(() => {
-        const fallbackText = getSimulatedResponse(text);
-        const fallbackMsg: Message = {
-          id: (Date.now() + 1).toString(),
-          text: fallbackText,
-          sender: 'ai',
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, fallbackMsg]);
-        setIsTyping(false);
-      }, 1000);
-      
-      return; // Exit function early since we handled it in the timeout
+      const errorMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        text: errorMessage,
+        sender: 'ai',
+        timestamp: new Date(),
+        isError: true
+      };
+      setMessages(prev => [...prev, errorMsg]);
     } finally {
       if (isTyping) setIsTyping(false); 
     }
-    
-    setIsTyping(false);
   };
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -291,7 +274,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
                 <div 
                   className={`max-w-[85%] p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
                     msg.isError 
-                      ? 'bg-red-900/50 border border-red-500/30 text-red-200 rounded-tl-none'
+                      ? 'bg-red-900/90 border border-red-500 text-white rounded-tl-none font-mono text-xs'
                       : msg.sender === 'user' 
                         ? 'bg-cyan-600 text-white rounded-tr-none' 
                         : 'bg-slate-700 text-slate-200 rounded-tl-none border border-slate-600'
