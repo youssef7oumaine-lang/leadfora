@@ -15,8 +15,6 @@ import { LanguageProvider } from './LanguageContext';
 const AppContent: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [chatMode, setChatMode] = useState<'chat' | 'voice'>('chat');
-  const [leadData, setLeadData] = useState<{name: string} | null>(null);
 
   // Scroll to top on mount
   useEffect(() => {
@@ -51,12 +49,9 @@ const AppContent: React.FC = () => {
       
       <Footer />
       <ChatBotWidget 
-        onOpenModal={handleOpenModal} 
         isOpen={isChatOpen}
         setIsOpen={setIsChatOpen}
-        mode={chatMode}
-        setMode={setChatMode}
-        leadData={leadData}
+        onOpenModal={handleOpenModal}
       />
       <LeadCaptureModal 
         isOpen={isModalOpen} 

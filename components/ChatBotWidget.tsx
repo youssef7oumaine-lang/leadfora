@@ -2,323 +2,191 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
 
-interface ChatBotWidgetProps {
-  onOpenModal: () => void;
+// --- CONFIGURATION ---
+// PASTE YOUR NEW API KEY HERE IF NEEDED, OR USE THE ENV VARIABLE
+const API_KEY = process.env.API_KEY;
+
+const SYSTEM_INSTRUCTION = `
+IDENTITY:
+You are Sarah, Wolfz AI's Senior AI Consultant. You are professional, warm, and highly efficient.
+
+GOAL:
+Help users understand Wolfz AI (an AI agent for lead qualification) and encourage them to book a demo.
+
+KEY FACTS:
+- Wolfz AI works 24/7/365.
+- Responds in < 10 seconds.
+- Speaks 30+ languages.
+- Integrates with HubSpot, Salesforce, etc.
+- Secure (SOC2 compliant).
+
+BEHAVIOR:
+- Keep answers concise (2-3 sentences max).
+- Be enthusiastic but professional.
+- If you don't know an answer, suggest booking a demo.
+- Always try to steer the conversation towards booking a demo.
+`;
+
+interface ChatWidgetProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  mode: 'chat' | 'voice';
-  setMode: (mode: 'chat' | 'voice') => void;
-  leadData?: { name: string } | null;
+  onOpenModal: () => void;
 }
 
 type Message = {
-  id: number;
+  id: string;
   text: string;
   sender: 'ai' | 'user';
+  timestamp: Date;
 };
 
-// --- Persona ---
-
-const getSarahPersona = (leadName?: string) => `IDENTITY:
-You are Sarah, Wolfz AI's Senior AI Consultant. You are professional, warm, highly efficient, and persuasive.
-
-CONTEXT:
-User Name: ${leadName || "Guest"}
-
-CORE OBJECTIVES:
-1. Answer questions about Wolfz AI clearly.
-2. Overcome objections regarding security and AI capabilities.
-3. Guide the user to click the "Book Demo" button to see the AI in action.
-
-KNOWLEDGE BASE & OBJECTION HANDLING:
-
-1.  **Security & Privacy:**
-    *   "We use enterprise-grade encryption (SOC2 compliant standards). Your data is yours—we never train public models on your private client info."
-
-2.  **AI vs Human Reliability:**
-    *   "Unlike human agents, I never sleep, take breaks, or have 'off' days. I respond to every lead within 10 seconds, 24/7/365, ensuring you never miss the 5-minute golden window for conversion."
-
-3.  **Ease of Use:**
-    *   "Setup takes minutes. I connect instantly with your existing tools (HubSpot, Salesforce, etc.) with zero manual data entry required."
-
-4.  **Pricing:**
-    *   "We offer flexible plans based on lead volume. The best way to see the value is to book a quick demo."
-
-CONVERSATION FLOW:
-*   Keep answers concise (max 2-3 sentences).
-*   Be confident but approachable.
-*   Always end with a subtle nudge towards the demo: "Would you like to see how it works live?" or "Shall I open the demo form for you?"
-`;
-
-const QUICK_REPLIES = [
-  { id: 'pricing', label: '💰 Price?', question: 'How much does Wolfz AI cost?' },
-  { id: 'integrations', label: '🔌 Integrations?', question: 'What integrations does Wolfz AI support?' },
-  { id: 'languages', label: '🗣️ Languages?', question: 'What languages does Wolfz AI speak?' },
-  { id: 'demo', label: '🚀 Test AI', question: 'I want to test the AI.' },
-];
-
-// --- Main Widget ---
-
-const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setIsOpen, mode, setMode, leadData }) => {
-  const [isTyping, setIsTyping] = useState(false);
+const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal }) => {
+  // State
   const [messages, setMessages] = useState<Message[]>([
-    { id: 1, text: "Salam! 👋 I'm Sarah, the Wolfz AI Agent. I can speak 30+ languages. How can I help you today?", sender: 'ai' }
+    {
+      id: 'welcome',
+      text: "Hello! 👋 I'm Sarah. I can answer questions about Wolfz AI or help you book a demo. How can I help?",
+      sender: 'ai',
+      timestamp: new Date()
+    }
   ]);
   const [inputValue, setInputValue] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
-  // Greeting Bubble State
-  const [showGreeting, setShowGreeting] = useState(false);
-  const [hasDismissedGreeting, setHasDismissedGreeting] = useState(false);
-  
-  // Connection State
-  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connected');
   const chatSessionRef = useRef<any>(null);
 
-  // Proactive Greeting Timer
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-    if (!isOpen && !hasDismissedGreeting) {
-      timer = setTimeout(() => {
-        setShowGreeting(true);
-      }, 5000);
-    }
-    return () => clearTimeout(timer);
-  }, [isOpen, hasDismissedGreeting]);
-
-  // Auto-scroll to bottom
+  // Scroll to bottom on new message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping, isOpen]);
 
-  // Initialize Gemini Chat Session (Silent / Background)
+  // Initialize Chat Session
   useEffect(() => {
-    const initChat = () => {
-        try {
-            // Directly access process.env.API_KEY
-            const apiKey = process.env.API_KEY;
+    if (isOpen && !chatSessionRef.current && API_KEY) {
+      try {
+        const ai = new GoogleGenAI({ apiKey: API_KEY });
+        chatSessionRef.current = ai.chats.create({
+          model: 'gemini-2.5-flash',
+          config: {
+            systemInstruction: SYSTEM_INSTRUCTION,
+          }
+        });
+      } catch (e) {
+        console.error("Failed to initialize chat session", e);
+        setError("System offline");
+      }
+    }
+  }, [isOpen]);
 
-            if (!apiKey) {
-                console.warn("Wolfz AI: API Key missing on init");
-                // Don't set error yet, allows for JIT retry
-                return;
-            }
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    e?.preventDefault();
 
-            const ai = new GoogleGenAI({ apiKey });
-            const chat = ai.chats.create({
-              model: 'gemini-2.5-flash',
-              config: {
-                systemInstruction: getSarahPersona(leadData?.name),
-              }
-            });
-            
-            chatSessionRef.current = chat;
-            setConnectionStatus('connected');
-            console.log("Wolfz AI: Chat Session Ready");
+    if (!inputValue.trim()) return;
 
-        } catch (error) {
-            console.warn("Wolfz AI: Silent Init Failed", error);
-        }
+    const userText = inputValue.trim();
+    
+    // Add User Message
+    const newUserMsg: Message = {
+      id: Date.now().toString(),
+      text: userText,
+      sender: 'user',
+      timestamp: new Date()
     };
 
-    initChat();
-  }, [leadData?.name]);
-
-  const handleSendMessage = async (text: string, isDemo: boolean = false) => {
-    if (!text.trim()) return;
-
-    // UI Update: Show User Message Immediately
-    const userMsg: Message = { id: Date.now(), text: text, sender: 'user' };
-    setMessages(prev => [...prev, userMsg]);
+    setMessages(prev => [...prev, newUserMsg]);
     setInputValue("");
     setIsTyping(true);
+    setError(null);
 
-    // Mock response for "Test AI" button
-    if (isDemo) {
-      setTimeout(() => {
-        setIsTyping(false);
-        const aiMsg: Message = { 
-          id: Date.now() + 1, 
-          text: "Let's do it! Opening the demo form for you now...", 
-          sender: 'ai' 
-        };
-        setMessages(prev => [...prev, aiMsg]);
-        setTimeout(() => onOpenModal(), 1000);
-      }, 1000);
-      return;
-    }
-
-    // Real AI Response Logic
     try {
-      // JIT Initialization: If session is missing/broken, try to recreate it right now
+      if (!API_KEY) throw new Error("API Key missing");
+
+      // Re-init session if needed (robustness)
       if (!chatSessionRef.current) {
-         const apiKey = process.env.API_KEY;
-         if (apiKey) {
-            console.log("Wolfz AI: JIT Reconnection...");
-            const ai = new GoogleGenAI({ apiKey });
-            chatSessionRef.current = ai.chats.create({
-              model: 'gemini-2.5-flash',
-              config: { systemInstruction: getSarahPersona(leadData?.name) }
-            });
-            setConnectionStatus('connected');
-         } else {
-             console.error("Wolfz AI: API Key is undefined");
-             throw new Error("API Key missing");
-         }
+        const ai = new GoogleGenAI({ apiKey: API_KEY });
+        chatSessionRef.current = ai.chats.create({
+          model: 'gemini-2.5-flash',
+          config: { systemInstruction: SYSTEM_INSTRUCTION }
+        });
       }
 
-      // Send Message
-      const result = await chatSessionRef.current.sendMessage({ message: text });
-      const response = result.text;
-      
-      setIsTyping(false);
-      const aiMsg: Message = { 
-        id: Date.now() + 1, 
-        text: response, 
-        sender: 'ai' 
-      };
-      setMessages(prev => [...prev, aiMsg]);
-      setConnectionStatus('connected'); 
+      // Send to API
+      const result = await chatSessionRef.current.sendMessage({ message: userText });
+      const responseText = result.text;
 
-    } catch (error) {
-      console.error("Wolfz AI: Message Send Error", error);
-      setIsTyping(false);
-      
-      // Error Feedback
-      const errorMsg: Message = { 
-          id: Date.now() + 1, 
-          text: "I'm having trouble reaching our servers right now. Please check your connection or book a demo directly!", 
-          sender: 'ai' 
+      // Add AI Response
+      const newAiMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        text: responseText,
+        sender: 'ai',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, newAiMsg]);
+
+    } catch (err) {
+      console.error("Chat Error:", err);
+      // Fallback Message
+      const errorMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        text: "I'm currently experiencing high traffic. Please try again later or book a demo directly to speak with our team!",
+        sender: 'ai',
+        timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMsg]);
-      setConnectionStatus('error');
+    } finally {
+      setIsTyping(false);
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSendMessage(inputValue);
-    }
-  };
-
-  const handleDismissGreeting = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowGreeting(false);
-    setHasDismissedGreeting(true);
-  };
+  // Close handler
+  const toggleChat = () => setIsOpen(!isOpen);
 
   return (
-    <div 
-      className="fixed bottom-6 right-6 z-[90] flex flex-col items-end"
-      dir="ltr"
-    >
+    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end font-sans">
       
-      {/* Proactive Chat Invitation Bubble */}
-      {!isOpen && showGreeting && (
-        <div 
-          onClick={() => setIsOpen(true)}
-          className="mb-4 mr-2 w-64 bg-[#0F172A]/90 backdrop-blur-xl border border-cyan-500/30 rounded-2xl rounded-br-none p-4 shadow-[0_0_20px_rgba(0,217,255,0.2)] cursor-pointer animate-fade-in-up relative group transition-all hover:-translate-y-1"
-        >
-          {/* Close Button */}
-          <button 
-            onClick={handleDismissGreeting}
-            className="absolute top-2 right-2 text-slate-400 hover:text-white p-1 rounded-full hover:bg-slate-800/50 transition-colors"
-          >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-emerald-500 flex-shrink-0 flex items-center justify-center shadow-lg">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <p className="text-xs text-white font-medium leading-relaxed pr-4">
-              I'm Sarah, your AI Agent. Want to hear me speak Arabic or French? Click here. 🎙️
-            </p>
-          </div>
-
-          {/* Triangle Pointer */}
-          <div className="absolute -bottom-2 right-4 w-4 h-4 bg-[#0F172A]/90 border-r border-b border-cyan-500/30 transform rotate-45"></div>
-        </div>
-      )}
-
       {/* Chat Window */}
       {isOpen && (
-        <div className="mb-4 w-[350px] h-[550px] flex flex-col bg-[#0F172A]/95 backdrop-blur-xl border border-cyan-500/30 rounded-2xl shadow-2xl overflow-hidden animate-fade-in-up origin-bottom-right transition-all duration-300">
+        <div className="mb-4 w-[360px] max-w-[calc(100vw-48px)] h-[550px] max-h-[70vh] flex flex-col bg-[#0F172A] border border-cyan-500/30 rounded-2xl shadow-2xl overflow-hidden animate-fade-in-up origin-bottom-right">
           
           {/* Header */}
-          <div className="flex items-center justify-between p-4 bg-slate-900/80 border-b border-cyan-500/20 shrink-0">
+          <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-cyan-500/20">
             <div className="flex items-center gap-3">
               <div className="relative">
-                {/* Status Dot Logic */}
-                <div className={`w-2 h-2 absolute bottom-0 right-0 rounded-full ring-2 ring-slate-900 transition-colors duration-300 ${
-                    connectionStatus === 'connected' ? 'bg-green-500' :
-                    connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' :
-                    'bg-red-500'
-                }`}></div>
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-emerald-500 flex items-center justify-center text-white text-xs font-bold">
+                <div className="w-2.5 h-2.5 absolute bottom-0 right-0 bg-green-500 rounded-full border-2 border-slate-900"></div>
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-emerald-500 flex items-center justify-center text-white font-bold shadow-lg">
                   AI
                 </div>
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">Sarah (AI Agent)</h3>
-                <span className={`text-[10px] font-mono transition-colors duration-300 ${
-                     connectionStatus === 'connected' ? 'text-emerald-400' :
-                     connectionStatus === 'connecting' ? 'text-yellow-400' :
-                     'text-red-400'
-                }`}>
-                    {connectionStatus === 'connected' ? '● Online' : 
-                     connectionStatus === 'connecting' ? '● Connecting...' : 
-                     '● Offline'}
-                </span>
+                <h3 className="font-bold text-white text-sm">Wolfz AI Agent</h3>
+                <p className="text-xs text-cyan-400 font-mono">● Online</p>
               </div>
             </div>
-            
-            <div className="flex items-center gap-2">
-                {/* Book Demo Button (Replaces Voice Call) */}
-                <button 
-                    onClick={onOpenModal}
-                    className="p-2 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-300 transition-colors border border-cyan-500/30"
-                    title="Book AI Demo"
-                >
-                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.44-5.15-3.75-6.59-6.59l1.97-1.57c.27-.27.36-.66.24-1.01-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3.28 3 3.93 3 4.74c0 9.17 7.46 16.63 16.63 16.63.81 0 1.46-.65 1.46-1.19v-3.81c0-.54-.45-.99-.99-.99z"/></svg>
-                </button>
-                {/* Close */}
-                <button 
-                    onClick={() => setIsOpen(false)}
-                    className="text-slate-400 hover:text-white transition-colors"
-                >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
+            <button 
+              onClick={toggleChat}
+              className="text-slate-400 hover:text-white transition-colors p-1"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
 
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar bg-gradient-to-b from-slate-900/50 to-transparent">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-800/50 scroll-smooth">
             {messages.map((msg) => (
               <div 
                 key={msg.id} 
-                className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start items-start gap-2'}`}
+                className={`flex w-full ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                {/* AI Avatar for messages */}
-                {msg.sender === 'ai' && (
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-500 to-emerald-500 flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(6,182,212,0.5)] mt-1">
-                    <svg className="w-3.5 h-3.5 text-white animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                )}
-
                 <div 
-                  className={`max-w-[80%] p-3 rounded-xl text-sm leading-relaxed shadow-lg ${
+                  className={`max-w-[85%] p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
                     msg.sender === 'user' 
-                    ? 'bg-gradient-to-r from-cyan-600 to-cyan-500 text-white rounded-tr-none' 
-                    : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-tl-none'
+                      ? 'bg-cyan-600 text-white rounded-tr-none' 
+                      : 'bg-slate-700 text-slate-200 rounded-tl-none border border-slate-600'
                   }`}
                 >
                   {msg.text}
@@ -328,16 +196,11 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
             
             {/* Typing Indicator */}
             {isTyping && (
-              <div className="flex justify-start items-start gap-2">
-                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-500 to-emerald-500 flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(6,182,212,0.5)] mt-1">
-                  <svg className="w-3.5 h-3.5 text-white animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-                <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl rounded-tl-none flex items-center gap-1">
-                  <span className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              <div className="flex justify-start">
+                <div className="bg-slate-700 border border-slate-600 p-4 rounded-2xl rounded-tl-none flex items-center gap-1.5 w-16">
+                  <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
               </div>
             )}
@@ -345,81 +208,73 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
           </div>
 
           {/* Input Area */}
-          <div className="bg-slate-900/80 border-t border-cyan-500/20 shrink-0">
-            
-            {/* Quick Options (Horizontal Scroll) */}
-            <div className="flex gap-2 p-3 overflow-x-auto no-scrollbar border-b border-slate-800">
-              {QUICK_REPLIES.map((option) => (
-                <button
-                  key={option.id}
-                  onClick={() => handleSendMessage(option.question, option.id === 'demo')}
-                  disabled={isTyping}
-                  className="whitespace-nowrap text-xs py-1.5 px-3 rounded-full bg-slate-800 hover:bg-cyan-500/20 border border-slate-700 hover:border-cyan-500/50 text-slate-300 hover:text-cyan-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Text Input */}
-            <div className="p-3 flex gap-2">
-              <input
-                type="text"
+          <div className="p-4 bg-slate-900 border-t border-cyan-500/20">
+            <form 
+              onSubmit={handleSendMessage}
+              className="flex items-center gap-2"
+            >
+              <input 
+                type="text" 
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Type a question..."
-                className="flex-1 bg-slate-800 text-white text-sm rounded-lg px-3 py-2 border border-slate-700 focus:border-cyan-500 focus:outline-none placeholder-slate-500 disabled:opacity-50"
+                placeholder="Ask anything..."
+                className="flex-1 bg-slate-800 text-white text-sm rounded-xl px-4 py-3 border border-slate-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
+                disabled={isTyping}
               />
-              <button
-                onClick={() => handleSendMessage(inputValue)}
+              <button 
+                type="submit"
                 disabled={!inputValue.trim() || isTyping}
-                className="bg-cyan-500 hover:bg-cyan-400 text-white rounded-lg p-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-gradient-to-r from-cyan-500 to-emerald-500 text-white p-3 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
                 </svg>
+              </button>
+            </form>
+            <div className="mt-2 text-center">
+              <button 
+                onClick={onOpenModal}
+                className="text-xs text-cyan-400 hover:text-cyan-300 underline underline-offset-2"
+              >
+                Book a Demo Instead
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Floating Trigger Button */}
+      {/* Floating Toggle Button */}
       <button
-        onClick={() => {
-          setIsOpen(!isOpen);
-          setShowGreeting(false);
-        }}
-        className="relative group h-14 w-14 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(0,255,65,0.4)] hover:scale-110 transition-all duration-300 focus:outline-none"
-        style={{
-          background: 'linear-gradient(135deg, #00D9FF 0%, #00FF41 100%)'
-        }}
+        onClick={toggleChat}
+        className="group relative flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#00D9FF] to-[#00FF41] shadow-[0_0_20px_rgba(0,255,65,0.4)] hover:scale-105 transition-all duration-300 z-50"
       >
-        {/* Pulse Ring */}
-        <span className="absolute -inset-1 rounded-full bg-emerald-400/30 animate-ping"></span>
-        
+        <div className="absolute inset-0 rounded-full bg-white opacity-0 group-hover:opacity-20 transition-opacity" />
         {isOpen ? (
-           // Close Icon
-           <svg className="w-6 h-6 text-slate-900 font-bold relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-           </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-slate-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
         ) : (
-           // Robot/Sparkle Icon
-           <svg className="w-7 h-7 text-slate-900 relative z-10 group-hover:rotate-12 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-           </svg>
+          <>
+            <span className="absolute -top-1 -right-1 flex h-4 w-4">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-slate-900"></span>
+            </span>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-slate-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            </svg>
+          </>
         )}
       </button>
 
-      {/* Notification Badge (Only when closed and greeting not shown) */}
-      {!isOpen && !showGreeting && (
-        <div className="absolute top-0 right-0 -mt-1 -mr-1 w-4 h-4 bg-red-500 rounded-full border-2 border-slate-900 flex items-center justify-center animate-bounce">
-          <span className="w-2 h-2 bg-white rounded-full"></span>
-        </div>
-      )}
+      <style>{`
+        @keyframes fade-in-up {
+          from { opacity: 0; transform: translateY(20px) scale(0.95); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-fade-in-up { animation: fade-in-up 0.3s ease-out forwards; }
+      `}</style>
     </div>
   );
 };
 
-export default ChatBotWidget;
+export default ChatWidget;
