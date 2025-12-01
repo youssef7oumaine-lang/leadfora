@@ -29,18 +29,16 @@ const SUGGESTIONS = [
   { label: "📅 Integrations", text: "What CRMs do you integrate with?" }
 ];
 
-// Safely retrieve API Key. 
+// Safely retrieve API Key from environment only
 const getApiKey = () => {
   try {
-    // Check environment variable first
     if (typeof process !== 'undefined' && process.env?.API_KEY) {
       return process.env.API_KEY;
     }
   } catch (e) {
     // Ignore error
   }
-  // Fallback to the user's provided OpenRouter key if env var is missing
-  return "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";
+  return undefined;
 };
 
 const API_KEY = getApiKey();
@@ -98,9 +96,9 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
     return () => clearTimeout(timer);
   }, [isOpen, hasInteracted]);
 
-  // Initialize Chat Session (Only for Google SDK)
+  // Initialize Chat Session (Only if API Key is present)
   useEffect(() => {
-    if (isOpen && !chatSessionRef.current && API_KEY && !API_KEY.startsWith('sk-or-')) {
+    if (isOpen && !chatSessionRef.current && API_KEY) {
       try {
         const ai = new GoogleGenAI({ apiKey: API_KEY });
         chatSessionRef.current = ai.chats.create({
@@ -158,42 +156,8 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
     try {
       let responseText = "";
 
-      // CHECK API KEY TYPE
-      if (API_KEY.startsWith('sk-or-')) {
-        // --- OPENROUTER API CALL (For the provided key) ---
-        // We use the free model endpoint
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${API_KEY}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": window.location.origin || "https://wolfz.ai", 
-            "X-Title": "Wolfz AI Chat"
-          },
-          body: JSON.stringify({
-            "model": "google/gemini-2.0-flash-lite-preview-02-05:free", 
-            "messages": [
-              { "role": "system", "content": SYSTEM_INSTRUCTION },
-              ...messages.slice(-5).map(m => ({
-                "role": m.sender === 'ai' ? "assistant" : "user",
-                "content": m.text
-              })),
-              { "role": "user", "content": text }
-            ]
-          })
-        });
-
-        if (!response.ok) {
-           const errData = await response.json().catch(() => ({}));
-           // Throw error to trigger fallback
-           throw new Error(`OpenRouter Error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        responseText = data.choices?.[0]?.message?.content || "";
-
-      } else {
-        // --- GOOGLE GENAI SDK CALL (For standard Gemini keys) ---
+      // 2. Try Google GenAI SDK if Key exists
+      if (API_KEY) {
         if (!chatSessionRef.current) {
            const ai = new GoogleGenAI({ apiKey: API_KEY });
            chatSessionRef.current = ai.chats.create({
@@ -203,6 +167,9 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
         }
         const result = await chatSessionRef.current.sendMessage({ message: text });
         responseText = result.text;
+      } else {
+        // Force fallback if no key
+        throw new Error("No API Key configured");
       }
 
       if (!responseText) throw new Error("Empty response");
@@ -217,13 +184,12 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
       setMessages(prev => [...prev, newAiMsg]);
 
     } catch (err: any) {
-      console.warn("Chat API failed (using fallback):", err);
+      console.warn("Chat API failed or Key missing (using fallback):", err);
       
       // --- DEMO FALLBACK MODE ---
       // If the API fails (Auth error, No credits, Network issue), 
       // we gracefully fall back to a simulated response so the user experience isn't broken.
       
-      // Simulate network delay
       setTimeout(() => {
         const fallbackText = getSimulatedResponse(text);
         const fallbackMsg: Message = {
@@ -238,8 +204,6 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
       
       return; // Exit function early since we handled it in the timeout
     } finally {
-      // Only clear typing here if we didn't go into the catch/timeout block
-      // The timeout above handles its own setIsTyping(false)
       if (isTyping) setIsTyping(false); 
     }
     
