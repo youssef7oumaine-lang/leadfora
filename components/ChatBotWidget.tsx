@@ -90,21 +90,28 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
   // Gemini Chat Session for Text Mode
   const [textChatSession, setTextChatSession] = useState<any>(null);
 
-  useEffect(() => {
+  const initChatSession = () => {
     if (process.env.API_KEY) {
         try {
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             const chat = ai.chats.create({
-              model: 'gemini-3-pro-preview',
+              model: 'gemini-2.5-flash',
               config: {
                 systemInstruction: getSarahPersona(leadData?.name),
               }
             });
             setTextChatSession(chat);
+            return chat;
         } catch (error) {
             console.error("Failed to initialize Text AI", error);
+            return null;
         }
     }
+    return null;
+  };
+
+  useEffect(() => {
+    initChatSession();
   }, [leadData]);
 
   const handleSendMessage = async (text: string, isDemo: boolean = false) => {
@@ -130,8 +137,14 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
     }
 
     try {
-      if (textChatSession) {
-        const result = await textChatSession.sendMessage({ message: text });
+      // Use existing session or try to init one immediately
+      let activeSession = textChatSession;
+      if (!activeSession) {
+         activeSession = initChatSession();
+      }
+
+      if (activeSession) {
+        const result = await activeSession.sendMessage({ message: text });
         const response = result.text;
         setIsTyping(false);
         const aiMsg: Message = { 
@@ -141,11 +154,12 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
         };
         setMessages(prev => [...prev, aiMsg]);
       } else {
+         // Fallback if API Key is missing or init fails completely
          setTimeout(() => {
             setIsTyping(false);
             const aiMsg: Message = { 
                 id: Date.now() + 1, 
-                text: "I'm connecting... please try again.", 
+                text: "I'm having trouble connecting right now. Please try booking a demo directly!", 
                 sender: 'ai' 
             };
             setMessages(prev => [...prev, aiMsg]);
@@ -309,7 +323,7 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
                   key={option.id}
                   onClick={() => handleSendMessage(option.question, option.id === 'demo')}
                   disabled={isTyping}
-                  className="whitespace-nowrap text-xs py-1.5 px-3 rounded-full bg-slate-800 hover:bg-cyan-500/20 border border-slate-700 hover:border-cyan-500/50 text-slate-300 hover:text-cyan-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="whitespace-nowrap text-xs py-1.5 px-3 rounded-full bg-slate-800 hover:bg-cyan-500/20 border border-slate-700 hover:border-cyan-500/50 text-slate-300 hover:text-cyan-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                 >
                   {option.label}
                 </button>
