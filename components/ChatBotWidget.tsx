@@ -71,7 +71,7 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
   const [showGreeting, setShowGreeting] = useState(false);
   const [hasDismissedGreeting, setHasDismissedGreeting] = useState(false);
   
-  // Connection State - Default to 'connected' for Optimistic UI (prevents flickering offline state)
+  // Connection State
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connected');
   const chatSessionRef = useRef<any>(null);
 
@@ -93,16 +93,25 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
 
   // Initialize Gemini Chat Session (Silent / Background)
   useEffect(() => {
-    const initChat = async () => {
-        if (!process.env.API_KEY) {
+    const initChat = () => {
+        // Safe check for API Key existence to prevent crashes
+        let apiKey: string | undefined;
+        try {
+          // Check if process is defined (to avoid ReferenceError in some envs)
+          if (typeof process !== 'undefined' && process.env) {
+            apiKey = process.env.API_KEY;
+          }
+        } catch (e) {
+          console.warn("Wolfz AI: Error accessing env vars", e);
+        }
+
+        if (!apiKey) {
             console.warn("Wolfz AI: API Key missing on init (Waiting for JIT init)");
-            // Do NOT set error state here. Let the user see the UI.
             return;
         }
 
         try {
-            // We do NOT set 'connecting' here to avoid yellow flicker.
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const ai = new GoogleGenAI({ apiKey });
             const chat = ai.chats.create({
               model: 'gemini-2.5-flash',
               config: {
@@ -111,12 +120,11 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
             });
             
             chatSessionRef.current = chat;
-            setConnectionStatus('connected'); // Confirm connection
+            setConnectionStatus('connected');
             console.log("Wolfz AI: Chat Session Ready");
 
         } catch (error) {
-            console.warn("Wolfz AI: Silent Init Failed (Will retry on message)", error);
-            // Stay 'connected' visually to avoid scaring the user
+            console.warn("Wolfz AI: Silent Init Failed", error);
         }
     };
 
@@ -149,18 +157,27 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
 
     // Real AI Response Logic
     try {
+      // Safe Key Access
+      let apiKey: string | undefined;
+      try {
+        if (typeof process !== 'undefined' && process.env) {
+          apiKey = process.env.API_KEY;
+        }
+      } catch (e) {}
+
       // JIT Initialization: If session is missing/broken, try to recreate it right now
       if (!chatSessionRef.current) {
-         if (process.env.API_KEY) {
+         if (apiKey) {
             console.log("Wolfz AI: JIT Reconnection...");
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const ai = new GoogleGenAI({ apiKey });
             chatSessionRef.current = ai.chats.create({
               model: 'gemini-2.5-flash',
               config: { systemInstruction: getSarahPersona(leadData?.name) }
             });
             setConnectionStatus('connected');
          } else {
-             throw new Error("API Key missing during message send");
+             console.error("Wolfz AI: API Key is undefined");
+             throw new Error("API Key missing");
          }
       }
 
@@ -175,20 +192,20 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
         sender: 'ai' 
       };
       setMessages(prev => [...prev, aiMsg]);
-      setConnectionStatus('connected'); // Ensure status is green on success
+      setConnectionStatus('connected'); 
 
     } catch (error) {
       console.error("Wolfz AI: Message Send Error", error);
       setIsTyping(false);
       
-      // Now we show the error because the user action actually failed
+      // Error Feedback
       const errorMsg: Message = { 
           id: Date.now() + 1, 
           text: "I'm having trouble reaching our servers right now. Please check your connection or book a demo directly!", 
           sender: 'ai' 
       };
       setMessages(prev => [...prev, errorMsg]);
-      setConnectionStatus('error'); // Turn dot red
+      setConnectionStatus('error');
     }
   };
 
@@ -420,4 +437,3 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
 };
 
 export default ChatBotWidget;
-    
