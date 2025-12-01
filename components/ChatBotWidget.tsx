@@ -84,7 +84,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
 
   // Initialize Chat Session
   useEffect(() => {
-    if (isOpen && !chatSessionRef.current && process.env.API_KEY) {
+    if (isOpen && !chatSessionRef.current) {
       try {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         chatSessionRef.current = ai.chats.create({
@@ -118,8 +118,6 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
     setHasInteracted(true);
 
     try {
-      if (!process.env.API_KEY) throw new Error("API Key missing");
-
       // Re-init session if needed
       if (!chatSessionRef.current) {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
