@@ -71,8 +71,8 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
   const [showGreeting, setShowGreeting] = useState(false);
   const [hasDismissedGreeting, setHasDismissedGreeting] = useState(false);
   
-  // Connection State
-  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
+  // Connection State - Default to 'connected' for Optimistic UI (prevents flickering offline state)
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connected');
   const chatSessionRef = useRef<any>(null);
 
   // Proactive Greeting Timer
@@ -91,20 +91,17 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping, isOpen]);
 
-  // Initialize Gemini Chat Session
+  // Initialize Gemini Chat Session (Silent / Background)
   useEffect(() => {
     const initChat = async () => {
-        // If we already have a session and the lead name hasn't drastically changed, skip re-init to be safe
-        // But here we want to update persona if leadData changes.
-        
         if (!process.env.API_KEY) {
-            console.error("CRITICAL ERROR: process.env.API_KEY is missing. Chatbot cannot connect.");
-            setConnectionStatus('error');
+            console.warn("Wolfz AI: API Key missing on init (Waiting for JIT init)");
+            // Do NOT set error state here. Let the user see the UI.
             return;
         }
 
         try {
-            setConnectionStatus('connecting');
+            // We do NOT set 'connecting' here to avoid yellow flicker.
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             const chat = ai.chats.create({
               model: 'gemini-2.5-flash',
@@ -114,12 +111,12 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
             });
             
             chatSessionRef.current = chat;
-            setConnectionStatus('connected');
-            console.log("Wolfz AI: Chat Session Initialized Successfully");
+            setConnectionStatus('connected'); // Confirm connection
+            console.log("Wolfz AI: Chat Session Ready");
 
         } catch (error) {
-            console.error("Wolfz AI: Connection Failed", error);
-            setConnectionStatus('error');
+            console.warn("Wolfz AI: Silent Init Failed (Will retry on message)", error);
+            // Stay 'connected' visually to avoid scaring the user
         }
     };
 
@@ -129,6 +126,7 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
   const handleSendMessage = async (text: string, isDemo: boolean = false) => {
     if (!text.trim()) return;
 
+    // UI Update: Show User Message Immediately
     const userMsg: Message = { id: Date.now(), text: text, sender: 'user' };
     setMessages(prev => [...prev, userMsg]);
     setInputValue("");
@@ -149,12 +147,12 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
       return;
     }
 
-    // Real AI Response
+    // Real AI Response Logic
     try {
-      if (!chatSessionRef.current || connectionStatus === 'error') {
-         // Attempt one quick re-connect if currently disconnected
+      // JIT Initialization: If session is missing/broken, try to recreate it right now
+      if (!chatSessionRef.current) {
          if (process.env.API_KEY) {
-            console.log("Attempting lazy reconnection...");
+            console.log("Wolfz AI: JIT Reconnection...");
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             chatSessionRef.current = ai.chats.create({
               model: 'gemini-2.5-flash',
@@ -166,29 +164,31 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
          }
       }
 
-      if (chatSessionRef.current) {
-        const result = await chatSessionRef.current.sendMessage({ message: text });
-        const response = result.text;
-        
-        setIsTyping(false);
-        const aiMsg: Message = { 
-          id: Date.now() + 1, 
-          text: response, 
-          sender: 'ai' 
-        };
-        setMessages(prev => [...prev, aiMsg]);
-      } 
+      // Send Message
+      const result = await chatSessionRef.current.sendMessage({ message: text });
+      const response = result.text;
+      
+      setIsTyping(false);
+      const aiMsg: Message = { 
+        id: Date.now() + 1, 
+        text: response, 
+        sender: 'ai' 
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      setConnectionStatus('connected'); // Ensure status is green on success
+
     } catch (error) {
       console.error("Wolfz AI: Message Send Error", error);
       setIsTyping(false);
       
+      // Now we show the error because the user action actually failed
       const errorMsg: Message = { 
           id: Date.now() + 1, 
-          text: "I'm having trouble reaching our servers right now. Please try checking your internet connection, or book a demo directly!", 
+          text: "I'm having trouble reaching our servers right now. Please check your connection or book a demo directly!", 
           sender: 'ai' 
       };
       setMessages(prev => [...prev, errorMsg]);
-      setConnectionStatus('error');
+      setConnectionStatus('error'); // Turn dot red
     }
   };
 
@@ -350,7 +350,7 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
                 <button
                   key={option.id}
                   onClick={() => handleSendMessage(option.question, option.id === 'demo')}
-                  disabled={isTyping || connectionStatus === 'error'}
+                  disabled={isTyping}
                   className="whitespace-nowrap text-xs py-1.5 px-3 rounded-full bg-slate-800 hover:bg-cyan-500/20 border border-slate-700 hover:border-cyan-500/50 text-slate-300 hover:text-cyan-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                 >
                   {option.label}
@@ -365,13 +365,12 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={connectionStatus === 'error' ? "Connection failed" : "Type a question..."}
-                disabled={connectionStatus === 'error'}
+                placeholder="Type a question..."
                 className="flex-1 bg-slate-800 text-white text-sm rounded-lg px-3 py-2 border border-slate-700 focus:border-cyan-500 focus:outline-none placeholder-slate-500 disabled:opacity-50"
               />
               <button
                 onClick={() => handleSendMessage(inputValue)}
-                disabled={!inputValue.trim() || isTyping || connectionStatus === 'error'}
+                disabled={!inputValue.trim() || isTyping}
                 className="bg-cyan-500 hover:bg-cyan-400 text-white rounded-lg p-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -421,3 +420,4 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
 };
 
 export default ChatBotWidget;
+    
