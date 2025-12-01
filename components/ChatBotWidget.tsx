@@ -94,23 +94,16 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
   // Initialize Gemini Chat Session (Silent / Background)
   useEffect(() => {
     const initChat = () => {
-        // Safe check for API Key existence to prevent crashes
-        let apiKey: string | undefined;
         try {
-          // Check if process is defined (to avoid ReferenceError in some envs)
-          if (typeof process !== 'undefined' && process.env) {
-            apiKey = process.env.API_KEY;
-          }
-        } catch (e) {
-          console.warn("Wolfz AI: Error accessing env vars", e);
-        }
+            // Directly access process.env.API_KEY
+            const apiKey = process.env.API_KEY;
 
-        if (!apiKey) {
-            console.warn("Wolfz AI: API Key missing on init (Waiting for JIT init)");
-            return;
-        }
+            if (!apiKey) {
+                console.warn("Wolfz AI: API Key missing on init");
+                // Don't set error yet, allows for JIT retry
+                return;
+            }
 
-        try {
             const ai = new GoogleGenAI({ apiKey });
             const chat = ai.chats.create({
               model: 'gemini-2.5-flash',
@@ -157,16 +150,9 @@ const ChatBotWidget: React.FC<ChatBotWidgetProps> = ({ onOpenModal, isOpen, setI
 
     // Real AI Response Logic
     try {
-      // Safe Key Access
-      let apiKey: string | undefined;
-      try {
-        if (typeof process !== 'undefined' && process.env) {
-          apiKey = process.env.API_KEY;
-        }
-      } catch (e) {}
-
       // JIT Initialization: If session is missing/broken, try to recreate it right now
       if (!chatSessionRef.current) {
+         const apiKey = process.env.API_KEY;
          if (apiKey) {
             console.log("Wolfz AI: JIT Reconnection...");
             const ai = new GoogleGenAI({ apiKey });
