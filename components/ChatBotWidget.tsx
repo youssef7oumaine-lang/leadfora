@@ -1,31 +1,11 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { GoogleGenAI } from "@google/genai";
 
 // ------------------------------------------------------------------
 // CONFIGURATION
 // ------------------------------------------------------------------
 
-const SYSTEM_INSTRUCTION = `
-IDENTITY:
-You are Sarah, Wolfz AI's Senior AI Consultant. You are professional, warm, and highly efficient.
-
-GOAL:
-Help users understand Wolfz AI (an AI agent for lead qualification) and encourage them to book a demo.
-
-KEY FACTS:
-- Wolfz AI works 24/7/365.
-- Responds in < 10 seconds.
-- Speaks 30+ languages.
-- Integrates with HubSpot, Salesforce, etc.
-- Secure (SOC2 compliant).
-
-BEHAVIOR:
-- Keep answers concise (2-3 sentences max).
-- Be enthusiastic but professional.
-- If you don't know an answer, suggest booking a demo.
-- Always try to steer the conversation towards booking a demo.
-`;
+const N8N_WEBHOOK_URL = "https://mistakable-danyell-limpidly.ngrok-free.dev/webhook/bf6e738c-d7a3-4dab-b740-65891b859949/chat";
 
 const SUGGESTIONS = [
   { label: "💸 Price?", text: "How much does Wolfz AI cost?" },
@@ -45,7 +25,6 @@ type Message = {
   sender: 'ai' | 'user';
   timestamp: Date;
   isError?: boolean;
-  isSystemAction?: boolean; // For "Select Key" buttons
 };
 
 const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal }) => {
@@ -86,27 +65,6 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
     return () => clearTimeout(timer);
   }, [isOpen, hasInteracted]);
 
-  const handleSelectKey = async () => {
-    const aistudio = (window as any).aistudio;
-    if (aistudio) {
-      try {
-        await aistudio.openSelectKey();
-        // Assume success, user can try sending message again
-        const systemMsg: Message = {
-          id: Date.now().toString(),
-          text: "API Key updated. Please try your request again.",
-          sender: 'ai',
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, systemMsg]);
-      } catch (e) {
-        console.error("Key selection failed", e);
-      }
-    } else {
-      console.warn("window.aistudio not available");
-    }
-  };
-
   const processMessage = async (text: string) => {
     if (!text.trim()) return;
 
@@ -124,73 +82,58 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
     setHasInteracted(true);
 
     try {
-      // 2. Direct Access to API Key
-      // We do not cache the client to ensure we always pick up the latest key
-      // if the user re-selects it via window.aistudio
-      const apiKey = process.env.API_KEY;
-
-      if (!apiKey) {
-        // Fallback: Check if we are in an environment that supports dynamic key selection
-        const aistudio = (window as any).aistudio;
-        if (aistudio) {
-          const hasKey = await aistudio.hasSelectedApiKey();
-          if (!hasKey) {
-            throw new Error("NO_KEY_SELECTED");
-          }
-        } else {
-           throw new Error("Missing API Key. Please configure process.env.API_KEY.");
-        }
-      }
-
-      // Initialize AI Client
-      // Note: If apiKey is undefined but we passed the check above (rare edge case), 
-      // the SDK might throw. We rely on the environment variable injection.
-      const ai = new GoogleGenAI({ apiKey: apiKey || "" });
-      
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: text,
-        config: {
-          systemInstruction: SYSTEM_INSTRUCTION,
-        }
+      // 2. Call n8n Webhook
+      const response = await fetch(N8N_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chatInput: text
+        })
       });
 
-      const responseText = response.text;
+      if (!response.ok) {
+        throw new Error(`Server responded with ${response.status}`);
+      }
 
-      if (!responseText) throw new Error("Empty response from API");
+      const data = await response.json();
+      
+      // 3. Extract AI Response
+      // n8n can return data in different structures depending on the workflow. 
+      // We prioritize 'output', then 'text', then check if it's an array.
+      let aiResponseText = "I received your message, but the system response was empty.";
+
+      if (data.output) {
+        aiResponseText = typeof data.output === 'string' ? data.output : JSON.stringify(data.output);
+      } else if (data.text) {
+        aiResponseText = typeof data.text === 'string' ? data.text : JSON.stringify(data.text);
+      } else if (Array.isArray(data) && data.length > 0) {
+        // Handle case where n8n returns an array of items
+        if (data[0].output) aiResponseText = data[0].output;
+        else if (data[0].text) aiResponseText = data[0].text;
+      } else if (typeof data === 'string') {
+        aiResponseText = data;
+      }
 
       // Add AI Response
       const newAiMsg: Message = {
         id: (Date.now() + 1).toString(),
-        text: responseText,
+        text: aiResponseText,
         sender: 'ai',
         timestamp: new Date()
       };
       setMessages(prev => [...prev, newAiMsg]);
 
     } catch (err: any) {
-      console.error("Chat API Critical Error:", err);
-      
-      let errorMessage = "System error. Please try again.";
-      let isSystemAction = false;
-
-      if (err.message === "NO_KEY_SELECTED" || err.message?.includes("API Key")) {
-        errorMessage = "API Key Missing. Please select a paid Google Cloud Project key to continue.";
-        isSystemAction = true;
-      } else if (err.message?.includes("403") || err.message?.includes("key")) {
-        errorMessage = "API Key Invalid or Expired. Please select a valid key.";
-        isSystemAction = true;
-      } else {
-        errorMessage = `Error: ${err.message || "Unknown error"}`;
-      }
+      console.error("Chat API Error:", err);
       
       const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
-        text: errorMessage,
+        text: "I'm having trouble reaching our servers right now. Please check your connection or book a demo directly!",
         sender: 'ai',
         timestamp: new Date(),
-        isError: true,
-        isSystemAction: isSystemAction
+        isError: true
       };
       setMessages(prev => [...prev, errorMsg]);
     } finally {
@@ -284,17 +227,6 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
                   }`}
                 >
                   {msg.text}
-                  {msg.isSystemAction && (window as any).aistudio && (
-                    <button
-                      onClick={handleSelectKey}
-                      className="mt-3 w-full px-3 py-2 bg-white text-slate-900 font-bold rounded-lg text-xs hover:bg-slate-100 transition-colors flex items-center justify-center gap-2"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                      </svg>
-                      Select API Key
-                    </button>
-                  )}
                 </div>
               </div>
             ))}
