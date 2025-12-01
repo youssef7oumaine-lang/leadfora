@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
 
 // ------------------------------------------------------------------
-// CONFIGURATION & API KEY HANDLING
+// CONFIGURATION
 // ------------------------------------------------------------------
 
 const SYSTEM_INSTRUCTION = `
@@ -33,34 +33,6 @@ const SUGGESTIONS = [
   { label: "📅 Integrations", text: "What CRMs do you integrate with?" }
 ];
 
-// Helper to safely get the API key from various environments
-const getApiKey = (): string | undefined => {
-  // 1. Check for a direct hardcoded key (Useful for debugging)
-  const HARDCODED_KEY = ""; // PASTE YOUR KEY HERE IF ENV VARS FAIL
-  if (HARDCODED_KEY) return HARDCODED_KEY;
-
-  // 2. Check process.env (Standard React/Node)
-  try {
-    if (typeof process !== 'undefined' && process.env?.API_KEY) {
-      return process.env.API_KEY;
-    }
-  } catch (e) {}
-
-  // 3. Check import.meta.env (Vite/Next.js)
-  try {
-    // @ts-ignore
-    if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_KEY) {
-      // @ts-ignore
-      return import.meta.env.VITE_API_KEY;
-    }
-  } catch (e) {}
-
-  return undefined;
-};
-
-const RAW_API_KEY = getApiKey();
-const API_KEY = RAW_API_KEY; // Using raw key for debugging to see all errors
-
 interface ChatWidgetProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
@@ -73,6 +45,7 @@ type Message = {
   sender: 'ai' | 'user';
   timestamp: Date;
   isError?: boolean;
+  isSystemAction?: boolean; // For "Select Key" buttons
 };
 
 const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal }) => {
@@ -94,7 +67,6 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const chatSessionRef = useRef<any>(null);
 
   // Scroll to bottom on new message
   useEffect(() => {
@@ -114,22 +86,26 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
     return () => clearTimeout(timer);
   }, [isOpen, hasInteracted]);
 
-  // Initialize Chat Session
-  useEffect(() => {
-    if (isOpen && !chatSessionRef.current && API_KEY) {
+  const handleSelectKey = async () => {
+    const aistudio = (window as any).aistudio;
+    if (aistudio) {
       try {
-        const ai = new GoogleGenAI({ apiKey: API_KEY });
-        chatSessionRef.current = ai.chats.create({
-          model: 'gemini-2.5-flash',
-          config: {
-            systemInstruction: SYSTEM_INSTRUCTION,
-          }
-        });
-      } catch (e: any) {
-        console.error("Initialization Error:", e);
+        await aistudio.openSelectKey();
+        // Assume success, user can try sending message again
+        const systemMsg: Message = {
+          id: Date.now().toString(),
+          text: "API Key updated. Please try your request again.",
+          sender: 'ai',
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, systemMsg]);
+      } catch (e) {
+        console.error("Key selection failed", e);
       }
+    } else {
+      console.warn("window.aistudio not available");
     }
-  }, [isOpen]);
+  };
 
   const processMessage = async (text: string) => {
     if (!text.trim()) return;
@@ -148,20 +124,38 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
     setHasInteracted(true);
 
     try {
-      if (!API_KEY) {
-        throw new Error("Missing API Key. Please check process.env.API_KEY");
+      // 2. Direct Access to API Key
+      // We do not cache the client to ensure we always pick up the latest key
+      // if the user re-selects it via window.aistudio
+      const apiKey = process.env.API_KEY;
+
+      if (!apiKey) {
+        // Fallback: Check if we are in an environment that supports dynamic key selection
+        const aistudio = (window as any).aistudio;
+        if (aistudio) {
+          const hasKey = await aistudio.hasSelectedApiKey();
+          if (!hasKey) {
+            throw new Error("NO_KEY_SELECTED");
+          }
+        } else {
+           throw new Error("Missing API Key. Please configure process.env.API_KEY.");
+        }
       }
 
-      if (!chatSessionRef.current) {
-         const ai = new GoogleGenAI({ apiKey: API_KEY });
-         chatSessionRef.current = ai.chats.create({
-           model: 'gemini-2.5-flash',
-           config: { systemInstruction: SYSTEM_INSTRUCTION }
-         });
-      }
+      // Initialize AI Client
+      // Note: If apiKey is undefined but we passed the check above (rare edge case), 
+      // the SDK might throw. We rely on the environment variable injection.
+      const ai = new GoogleGenAI({ apiKey: apiKey || "" });
       
-      const result = await chatSessionRef.current.sendMessage({ message: text });
-      const responseText = result.text;
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: text,
+        config: {
+          systemInstruction: SYSTEM_INSTRUCTION,
+        }
+      });
+
+      const responseText = response.text;
 
       if (!responseText) throw new Error("Empty response from API");
 
@@ -177,19 +171,30 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
     } catch (err: any) {
       console.error("Chat API Critical Error:", err);
       
-      // DEBUG MODE: Show exact error to user
-      const errorMessage = `DEBUG ERROR: ${err.message || "Unknown API Error"}. Check console for full details.`;
+      let errorMessage = "System error. Please try again.";
+      let isSystemAction = false;
+
+      if (err.message === "NO_KEY_SELECTED" || err.message?.includes("API Key")) {
+        errorMessage = "API Key Missing. Please select a paid Google Cloud Project key to continue.";
+        isSystemAction = true;
+      } else if (err.message?.includes("403") || err.message?.includes("key")) {
+        errorMessage = "API Key Invalid or Expired. Please select a valid key.";
+        isSystemAction = true;
+      } else {
+        errorMessage = `Error: ${err.message || "Unknown error"}`;
+      }
       
       const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
         text: errorMessage,
         sender: 'ai',
         timestamp: new Date(),
-        isError: true
+        isError: true,
+        isSystemAction: isSystemAction
       };
       setMessages(prev => [...prev, errorMsg]);
     } finally {
-      if (isTyping) setIsTyping(false); 
+      setIsTyping(false); 
     }
   };
 
@@ -212,9 +217,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end font-sans pointer-events-none">
-      {/* Pointer events set to none on container to allow clicking through empty space, 
-          then auto on children */}
-
+      
       {/* --- Feature 3: Proactive Hook Message --- */}
       {showHook && !isOpen && (
         <div className="pointer-events-auto absolute bottom-20 right-0 mr-20 w-64 animate-fade-in-up origin-bottom-right">
@@ -281,6 +284,17 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
                   }`}
                 >
                   {msg.text}
+                  {msg.isSystemAction && (window as any).aistudio && (
+                    <button
+                      onClick={handleSelectKey}
+                      className="mt-3 w-full px-3 py-2 bg-white text-slate-900 font-bold rounded-lg text-xs hover:bg-slate-100 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                      </svg>
+                      Select API Key
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
