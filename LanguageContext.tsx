@@ -155,7 +155,7 @@ const dictionary: Record<Language, Translations> = {
     },
     salesBot: {
       headline: "Auto-Qualify Leads & Book Meetings. 24/7.",
-      subheadline: "Our AI Qualification Engine doesn't support. It SELLS. Every lead auto-qualified and synced to your CRM in real-time.",
+      subheadline: "Deploy our AI Sales Chatbot on Website, WhatsApp, or Instagram. One smart brain that captures, qualifies, and books leads on the platforms where your clients are most active.",
       cta: "Get Your Sales Bot",
       badge: "Meeting Confirmed",
       chat: {
@@ -361,7 +361,7 @@ const dictionary: Record<Language, Translations> = {
       comparison_title: "Pourquoi les Agents Humains ne Peuvent pas Lutter",
       features: [
         { feature: "Temps de Réponse", human: "2-4 Heures", ai: "< 10 Secondes" },
-        { feature: "Disponibilité", human: "9h - 17h", ai: "24/7/365" },
+        { feature: "Disponibilidad", human: "9h - 17h", ai: "24/7/365" },
         { feature: "Taux de Qualification", human: "65% Moyenne", ai: "98% Constant" },
         { feature: "Appels Simultanés", human: "1 à la fois", ai: "Illimité" }
       ],
@@ -480,7 +480,7 @@ const dictionary: Record<Language, Translations> = {
       cta: "Obtén tu Bot de Ventas",
       badge: "Reunión Confirmada",
       chat: {
-        q1: "Hola, ¿qué tipo de propiedad le interesa? (Villa de lujo, Apartamento, Comercial?)",
+        q1: "Hola, ¿qué tipo de propiedad le interesa? (Villa de lujo, Apartamento, Commercial?)",
         a1: "Villa de lujo en Dubai Marina",
         q2: "¿Rango de presupuesto? (3M-5M AED, 5M+?)",
         a2: "5M+ AED",
