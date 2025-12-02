@@ -8,6 +8,7 @@ import SolutionSection from './components/SolutionSection';
 import DatabaseReactivationSection from './components/DatabaseReactivationSection';
 import IntegrationsHubSection from './components/IntegrationsHubSection';
 import GlobalReachSection from './components/GlobalReachSection';
+import SmartSalesBotSection from './components/SmartSalesBotSection';
 import ChatBotWidget from './components/ChatBotWidget';
 import Footer from './components/Footer';
 import { LanguageProvider } from './LanguageContext';
@@ -46,6 +47,10 @@ const AppContent: React.FC = () => {
       <DatabaseReactivationSection onOpenModal={handleOpenModal} />
       <IntegrationsHubSection />
       <GlobalReachSection onOpenModal={handleOpenModal} />
+      <SmartSalesBotSection 
+        onOpenModal={handleOpenModal} 
+        onToggleChat={toggleChat}
+      />
       
       <Footer />
       <ChatBotWidget 

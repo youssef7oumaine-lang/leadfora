@@ -222,9 +222,12 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
                     msg.isError 
                       ? 'bg-red-900/90 border border-red-500 text-white rounded-tl-none font-mono text-xs'
                       : msg.sender === 'user' 
-                        ? 'bg-cyan-600 text-white rounded-tr-none' 
-                        : 'bg-slate-700 text-slate-200 rounded-tl-none border border-slate-600'
+                        ? 'text-white font-medium rounded-tr-none shadow-[0_4px_15px_rgba(0,255,65,0.2)]'
+                        : 'bg-[#0B1221] text-slate-200 rounded-tl-none border border-[#00FF41]/30 shadow-[0_0_10px_rgba(0,255,65,0.05)]'
                   }`}
+                  style={msg.sender === 'user' && !msg.isError ? {
+                    background: 'linear-gradient(90deg, #00D9FF 0%, #00FF41 100%)'
+                  } : undefined}
                 >
                   {msg.text}
                 </div>
@@ -234,7 +237,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
             {/* Typing Indicator */}
             {isTyping && (
               <div className="flex justify-start">
-                <div className="bg-slate-700 border border-slate-600 p-4 rounded-2xl rounded-tl-none flex items-center gap-1.5 w-16">
+                <div className="bg-[#0B1221] border border-[#00FF41]/30 p-4 rounded-2xl rounded-tl-none flex items-center gap-1.5 w-16">
                   <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                   <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                   <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
@@ -283,7 +286,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
                 }}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                  <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.51a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
                 </svg>
               </button>
             </form>
