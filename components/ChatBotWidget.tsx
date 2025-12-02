@@ -218,7 +218,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
             {messages.map((msg) => (
               <div 
                 key={msg.id} 
-                className={`flex w-full ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex w-full ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} animate-message-in`}
               >
                 <div 
                   className={`max-w-[85%] p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm text-left ${
@@ -239,7 +239,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
             
             {/* Typing Indicator */}
             {isTyping && (
-              <div className="flex justify-start">
+              <div className="flex justify-start animate-message-in">
                 <div className="bg-[#0B1221] border border-[#00FF41]/30 p-4 rounded-2xl rounded-tl-none flex items-center gap-1.5 w-16">
                   <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                   <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -336,6 +336,14 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
         }
         .animate-fade-in-up { animation: fade-in-up 0.3s ease-out forwards; }
         
+        @keyframes message-in {
+          0% { opacity: 0; transform: translateY(10px) scale(0.98); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-message-in {
+          animation: message-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
         @keyframes pulse-ring {
           0% { box-shadow: 0 0 0 0 rgba(0, 217, 255, 0.7); }
           70% { box-shadow: 0 0 0 15px rgba(0, 217, 255, 0); }
