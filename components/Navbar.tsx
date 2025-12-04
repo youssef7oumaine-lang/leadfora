@@ -5,9 +5,11 @@ import { useTranslation } from '../LanguageContext';
 interface NavbarProps {
   onOpenModal: () => void;
   onToggleChat: () => void;
+  currentPage: 'home' | 'price';
+  onNavigate: (page: 'home' | 'price') => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ onOpenModal, onToggleChat }) => {
+const Navbar: React.FC<NavbarProps> = ({ onOpenModal, onToggleChat, currentPage, onNavigate }) => {
   const [isVisible, setIsVisible] = useState(true);
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
   const [isTop, setIsTop] = useState(true);
@@ -44,6 +46,20 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenModal, onToggleChat }) => {
 
   const handleScrollTo = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     e.preventDefault();
+    if (currentPage !== 'home') {
+      onNavigate('home');
+      // Wait for navigation then scroll
+      setTimeout(() => {
+        const element = document.getElementById(id);
+        if (element) {
+          const yOffset = -100; 
+          const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+          window.scrollTo({ top: y, behavior: 'smooth' });
+        }
+      }, 100);
+      return;
+    }
+    
     const element = document.getElementById(id);
     if (element) {
       const yOffset = -100; 
@@ -54,10 +70,22 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenModal, onToggleChat }) => {
 
   const handleHomeClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
+    if (currentPage !== 'home') {
+      onNavigate('home');
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handlePricingClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    onNavigate('price');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const currentLang = languages.find(l => l.code === language);
+  
+  // Force background when on Pricing page or scrolled
+  const isScrolled = !isTop || currentPage === 'price';
 
   return (
     <nav
@@ -65,9 +93,9 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenModal, onToggleChat }) => {
         isVisible ? 'translate-y-0' : '-translate-y-full'
       }`}
       style={{
-        background: isTop ? 'transparent' : 'rgba(255, 255, 255, 0.8)',
-        backdropFilter: isTop ? 'none' : 'blur(12px)',
-        borderBottom: isTop ? 'none' : '1px solid rgba(15, 23, 42, 0.05)'
+        background: isScrolled ? 'rgba(255, 255, 255, 0.8)' : 'transparent',
+        backdropFilter: isScrolled ? 'blur(12px)' : 'none',
+        borderBottom: isScrolled ? '1px solid rgba(15, 23, 42, 0.05)' : 'none'
       }}
       dir={isRTL ? 'rtl' : 'ltr'}
     >
@@ -75,14 +103,17 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenModal, onToggleChat }) => {
         {/* Logo - Text with Negan DEMO Font */}
         <div 
           className="flex items-center cursor-pointer text-slate-900"
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          onClick={() => {
+            onNavigate('home');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
         >
            <h1 className="text-3xl font-['Negan_DEMO'] tracking-widest uppercase">WOLFZ AI</h1>
         </div>
 
         {/* Navigation Links - Dark Text Forced */}
         <div className="hidden md:flex items-center gap-8">
-          <a href="#" onClick={handleHomeClick} className="text-sm font-medium transition-colors hover:text-cyan-500 text-slate-900">
+          <a href="#" onClick={handleHomeClick} className={`text-sm font-medium transition-colors hover:text-cyan-500 ${currentPage === 'home' ? 'text-cyan-600 font-bold' : 'text-slate-900'}`}>
             {t.navbar.home}
           </a>
           <a href="#services" onClick={(e) => handleScrollTo(e, 'services')} className="text-sm font-medium transition-colors hover:text-cyan-500 text-slate-900">
@@ -91,6 +122,9 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenModal, onToggleChat }) => {
           <a href="#integrations" onClick={(e) => handleScrollTo(e, 'integrations')} className="text-sm font-medium transition-colors hover:text-cyan-500 text-slate-900">
             {t.navbar.integrations}
           </a>
+          <a href="#pricing" onClick={handlePricingClick} className={`text-sm font-medium transition-colors hover:text-cyan-500 ${currentPage === 'price' ? 'text-cyan-600 font-bold' : 'text-slate-900'}`}>
+            {t.navbar.pricing}
+          </a>
           <a href="#languages" onClick={(e) => handleScrollTo(e, 'languages')} className="text-sm font-medium transition-colors hover:text-cyan-500 text-slate-900">
             {t.navbar.languages}
           </a>
@@ -98,7 +132,7 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenModal, onToggleChat }) => {
           <button 
             onClick={onToggleChat}
             className={`flex items-center gap-1.5 text-sm font-bold transition-all hover:scale-105 ${
-              isTop 
+              !isScrolled 
                 ? 'text-transparent bg-clip-text bg-gradient-to-r from-[#00D9FF] to-[#00FF41]' 
                 : 'text-slate-900 hover:text-cyan-600'
             }`}
@@ -107,7 +141,7 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenModal, onToggleChat }) => {
               xmlns="http://www.w3.org/2000/svg" 
               viewBox="0 0 24 24" 
               fill="currentColor" 
-              className={`w-4 h-4 ${isTop ? 'text-[#00D9FF]' : 'text-slate-900 group-hover:text-cyan-600'}`}
+              className={`w-4 h-4 ${!isScrolled ? 'text-[#00D9FF]' : 'text-slate-900 group-hover:text-cyan-600'}`}
             >
               <path fillRule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576l.813-2.846A.75.75 0 019 4.5zM9 15a.75.75 0 01.75.75v1.5h1.5a.75.75 0 010 1.5h-1.5v1.5a.75.75 0 01-1.5 0v-1.5h-1.5a.75.75 0 010-1.5h1.5v-1.5A.75.75 0 019 15z" clipRule="evenodd" />
             </svg>

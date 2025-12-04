@@ -9,6 +9,7 @@ interface Translations {
     services: string;
     integrations: string;
     languages: string;
+    pricing: string;
     ask_ai: string;
     get_demo: string;
   };
@@ -116,6 +117,7 @@ const dictionary: Record<Language, Translations> = {
       services: "Services",
       integrations: "Integrations",
       languages: "Languages",
+      pricing: "Pricing",
       ask_ai: "Ask AI",
       get_demo: "GET DEMO"
     },
@@ -223,6 +225,7 @@ const dictionary: Record<Language, Translations> = {
       services: "الخدمات",
       integrations: "التكاملات",
       languages: "اللغات",
+      pricing: "الأسعار",
       ask_ai: "اسأل الذكاء الاصطناعي",
       get_demo: "احجز استشارة"
     },
@@ -330,6 +333,7 @@ const dictionary: Record<Language, Translations> = {
       services: "Services",
       integrations: "Intégrations",
       languages: "Langues",
+      pricing: "Tarifs",
       ask_ai: "Demander à l'IA",
       get_demo: "OBTENIR DÉMO"
     },
@@ -361,7 +365,7 @@ const dictionary: Record<Language, Translations> = {
       comparison_title: "Pourquoi les Agents Humains ne Peuvent pas Lutter",
       features: [
         { feature: "Temps de Réponse", human: "2-4 Heures", ai: "< 10 Secondes" },
-        { feature: "Disponibilidad", human: "9h - 17h", ai: "24/7/365" },
+        { feature: "Disponibilité", human: "9h - 17h", ai: "24/7/365" },
         { feature: "Taux de Qualification", human: "65% Moyenne", ai: "98% Constant" },
         { feature: "Appels Simultanés", human: "1 à la fois", ai: "Illimité" }
       ],
@@ -437,6 +441,7 @@ const dictionary: Record<Language, Translations> = {
       services: "Servicios",
       integrations: "Integraciones",
       languages: "Idiomas",
+      pricing: "Precios",
       ask_ai: "Preguntar a IA",
       get_demo: "OBTENER DEMO"
     },

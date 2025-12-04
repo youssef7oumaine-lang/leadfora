@@ -46,11 +46,22 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Scroll to bottom on new message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping, isOpen]);
+
+  // Auto-resize textarea logic
+  useEffect(() => {
+    if (inputRef.current) {
+      // Reset height to auto to correctly calculate scrollHeight for shrinking content
+      inputRef.current.style.height = 'auto';
+      // Set height to scrollHeight to expand to fit content
+      inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
+    }
+  }, [inputValue, isOpen]);
 
   // Proactive Hook Timer
   useEffect(() => {
@@ -64,6 +75,25 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
     }
     return () => clearTimeout(timer);
   }, [isOpen, hasInteracted]);
+
+  // Listener for 'Click-to-Ask' events from Pricing Section
+  useEffect(() => {
+    const handleTrigger = (e: CustomEvent) => {
+      setIsOpen(true);
+      setInputValue(e.detail.message);
+      setHasInteracted(true);
+      // Wait for the open animation/render to complete before focusing
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 300);
+    };
+
+    window.addEventListener('trigger-chat-input' as any, handleTrigger as any);
+    return () => {
+      window.removeEventListener('trigger-chat-input' as any, handleTrigger as any);
+    };
+  }, [setIsOpen]);
+
 
   const processMessage = async (text: string) => {
     if (!text.trim()) return;
@@ -144,6 +174,15 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     processMessage(inputValue);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (!isTyping) {
+        processMessage(inputValue);
+      }
+    }
   };
 
   const handleSuggestionClick = (text: string) => {
@@ -270,20 +309,23 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
 
             <form 
               onSubmit={handleSendMessage}
-              className="flex items-center gap-3"
+              className="flex items-end gap-3"
             >
-              <input 
-                type="text" 
+              <textarea 
+                ref={inputRef}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder="Ask anything..."
-                className="flex-1 bg-slate-800 text-white text-sm rounded-xl px-4 py-3 border-2 border-transparent focus:bg-slate-900 focus:border-[#00D9FF] focus:shadow-[0_0_15px_rgba(0,217,255,0.2)] outline-none transition-all duration-300 placeholder-slate-400 text-left"
+                rows={1}
+                className="flex-1 bg-slate-800 text-white text-sm rounded-xl px-4 py-3 border-2 border-transparent focus:bg-slate-900 focus:border-[#00D9FF] focus:shadow-[0_0_15px_rgba(0,217,255,0.2)] outline-none transition-all duration-300 placeholder-slate-400 text-left resize-none overflow-hidden min-h-[48px] max-h-[120px]"
                 disabled={isTyping}
+                style={{ height: 'auto' }}
               />
               <button 
                 type="submit"
                 disabled={!inputValue.trim() || isTyping}
-                className="text-white p-3 rounded-xl transition-all duration-300 hover:scale-105 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-[0_0_15px_rgba(0,255,65,0.3)]"
+                className="text-white h-[48px] w-[48px] flex items-center justify-center rounded-xl transition-all duration-300 hover:scale-105 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-[0_0_15px_rgba(0,255,65,0.3)] shrink-0"
                 style={{
                   background: 'linear-gradient(90deg, #00D9FF 0%, #00FF41 100%)',
                 }}
