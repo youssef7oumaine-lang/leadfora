@@ -20,27 +20,10 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onOpenModal }) => {
       }}
       dir={isRTL ? 'rtl' : 'ltr'}
     >
-      <div className="absolute inset-0 z-0 w-full h-full">
-        {/* Adjusted top position to be just below navbar */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] mt-8">
-          <iframe 
-            src="https://my.spline.design/nexbotrobotcharacterconcept-ttHpNRASgXnCFBdblF6dSka2/" 
-            frameBorder="0" 
-            width="100%" 
-            height="100%" 
-            className="w-full h-full object-cover"
-            title="3D Robot Background"
-          />
-        </div>
-      </div>
-
       <div className="relative z-10 flex flex-col items-center text-center px-4 w-full max-w-6xl mt-12 -translate-y-14 space-y-8">
         
         <h1 
-          className="font-bold text-white tracking-tight"
-          style={{ 
-            textShadow: '0 2px 4px rgba(0,0,0,0.6)' 
-          }}
+          className="font-bold text-slate-900 tracking-tight"
         >
           {headlines.map((line, index) => (
             <span 
