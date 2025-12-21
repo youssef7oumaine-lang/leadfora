@@ -113,7 +113,9 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenModal, onToggleChat, currentPage,
       @media (max-width: 768px) {
         .logo-font-fix {
           font-family: 'Negan_DEMO', sans-serif !important;
-          font-weight: 400 !important;
+          font-weight: 700 !important;
+          letter-spacing: 2px !important;
+          text-transform: uppercase !important;
         }
       }
     `}</style>
