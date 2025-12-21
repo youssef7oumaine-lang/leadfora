@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '../LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -109,6 +108,16 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenModal, onToggleChat, currentPage,
 
   return (
     <>
+    {/* Explicit Mobile Font Fix */}
+    <style>{`
+      @media (max-width: 768px) {
+        .logo-font-fix {
+          font-family: 'Negan_DEMO', sans-serif !important;
+          font-weight: 400 !important;
+        }
+      }
+    `}</style>
+
     <nav
       className={`fixed top-0 left-0 right-0 z-50 px-6 h-20 transition-transform duration-300 ease-in-out ${
         isVisible ? 'translate-y-0' : '-translate-y-full'
@@ -130,7 +139,7 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenModal, onToggleChat, currentPage,
             setIsMobileMenuOpen(false);
           }}
         >
-           <h1 className="text-3xl font-['Negan_DEMO'] tracking-widest uppercase">WOLFZ AI</h1>
+           <h1 className="logo-font-fix text-3xl font-['Negan_DEMO'] tracking-widest uppercase">WOLFZ AI</h1>
         </div>
 
         {/* Desktop Navigation Links */}
