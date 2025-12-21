@@ -205,7 +205,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
       
       {/* --- Feature 3: Proactive Hook Message --- */}
       {showHook && !isOpen && (
-        <div className="pointer-events-auto absolute bottom-20 right-0 mr-20 w-64 animate-fade-in-up origin-bottom-right text-left">
+        <div className="chatbot-hook pointer-events-auto absolute bottom-20 right-0 mr-20 w-64 animate-fade-in-up origin-bottom-right text-left">
           <div className="relative bg-[#0F172A]/90 backdrop-blur-md border border-cyan-500/50 text-white p-4 rounded-2xl rounded-br-sm shadow-[0_0_20px_rgba(0,217,255,0.2)]">
             <button 
               onClick={(e) => { e.stopPropagation(); setShowHook(false); setHasInteracted(true); }}
@@ -360,7 +360,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
           </svg>
         ) : (
           <>
-            <span className="absolute -top-1 -right-1 flex h-4 w-4">
+            <span className="chatbot-badge absolute -top-1 -right-1 flex h-4 w-4">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-slate-900"></span>
             </span>
@@ -372,6 +372,11 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen, onOpenModal 
       </button>
 
       <style>{`
+        @media (max-width: 768px) {
+          .chatbot-hook, .chatbot-badge {
+            display: none !important;
+          }
+        }
         @keyframes fade-in-up {
           from { opacity: 0; transform: translateY(20px) scale(0.95); }
           to { opacity: 1; transform: translateY(0) scale(1); }
