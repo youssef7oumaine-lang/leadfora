@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -260,7 +259,7 @@ const PricingSection: React.FC<PricingSectionProps> = ({ onOpenModal }) => {
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}
                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                    className="fixed bottom-6 left-6 z-40 bg-white border border-slate-200 shadow-[0_10px_30px_rgba(0,0,0,0.1)] rounded-full pl-5 pr-3 py-3 flex items-center gap-3 max-w-[90vw] sm:max-w-sm"
+                    className="hidden md:flex fixed bottom-6 left-6 z-40 bg-white border border-slate-200 shadow-[0_10px_30px_rgba(0,0,0,0.1)] rounded-full pl-5 pr-3 py-3 items-center gap-3 max-w-[90vw] sm:max-w-sm"
                 >
                     <div className="text-xl">💡</div>
                     <div className="text-sm text-slate-700 leading-tight">
