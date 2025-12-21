@@ -204,6 +204,19 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onOpenModal }) => {
       {/* Content Overlay (Z-10, Pointer-Events-None to let clicks pass to canvas) */}
       <div className="relative z-10 flex flex-col items-center text-center px-4 w-full max-w-6xl mt-12 -translate-y-14 space-y-8 pointer-events-none">
         
+        {/* Tech Status Badge */}
+        <div className="pointer-events-auto">
+          <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-[#0F172A] border border-slate-800 shadow-xl transition-transform hover:scale-105 cursor-default">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="text-[11px] font-bold text-white tracking-widest uppercase font-mono leading-none pt-0.5">
+              WOLFZ AI ENGINE V2.0 LIVE
+            </span>
+          </div>
+        </div>
+
         <h1 className="font-bold text-slate-900 tracking-tight">
           {headlines.map((line, index) => (
             <span 
@@ -215,17 +228,31 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onOpenModal }) => {
           ))}
         </h1>
 
-        {/* Pointer-Events-Auto required for button to be clickable */}
-        <div className="pt-4 pointer-events-auto">
+        {/* Buttons: Pointer-Events-Auto required for button to be clickable */}
+        <div className="pt-4 pointer-events-auto flex flex-col md:flex-row items-center gap-4 w-full justify-center">
+          {/* Button 1: Voice (Green Gradient) */}
           <button
             onClick={onOpenModal}
-            className="px-12 py-2.5 rounded-full font-bold text-white text-base transition-all duration-300 hover:scale-105 hover:brightness-125 focus:outline-none"
+            className="w-full md:w-auto px-12 py-3 rounded-full font-bold text-white text-base transition-all duration-300 hover:scale-105 hover:brightness-125 focus:outline-none shadow-[0_0_25px_rgba(0,255,65,0.4)]"
             style={{
               background: 'linear-gradient(90deg, #00D9FF 0%, #00FF41 100%)',
-              boxShadow: '0 0 25px rgba(0, 255, 65, 0.6)'
             }}
           >
-            {t.hero.cta}
+            Test Our AI Now
+          </button>
+
+          {/* Button 2: Chat (Identical Style to Button 1) */}
+          <button
+            onClick={() => {
+              const event = new CustomEvent('trigger-chat-input', { detail: { message: 'I want to try the demo' } });
+              window.dispatchEvent(event);
+            }}
+            className="w-full md:w-auto px-12 py-3 rounded-full font-bold text-white text-base transition-all duration-300 hover:scale-105 hover:brightness-125 focus:outline-none shadow-[0_0_25px_rgba(0,255,65,0.4)]"
+            style={{
+              background: 'linear-gradient(90deg, #00D9FF 0%, #00FF41 100%)',
+            }}
+          >
+            Try Chatbot Demo
           </button>
         </div>
       </div>
