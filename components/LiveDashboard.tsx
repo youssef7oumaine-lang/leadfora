@@ -25,7 +25,7 @@ const generateLog = () => {
 // --- Sub-Components ---
 
 const MetricCard = ({ label, value, color, glowColor, subtext }: any) => (
-  <div className="relative overflow-hidden bg-cyan-500/5 border border-cyan-500/20 rounded-xl p-4 flex justify-between items-center group hover:bg-cyan-500/10 transition-colors duration-300 h-full">
+  <div className="relative overflow-hidden bg-cyan-500/5 border border-cyan-500/20 rounded-xl p-4 flex justify-between items-center group hover:bg-cyan-500/10 transition-colors duration-300 h-full w-full">
     <div className="flex flex-col justify-center">
       <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400 mb-1 whitespace-nowrap">{label}</span>
       <div className="flex items-center gap-2">
@@ -108,15 +108,15 @@ const LiveDashboard: React.FC = () => {
   }).join(' ');
 
   return (
-    <div className="relative w-full h-full min-h-[500px] bg-[#0F172A]/90 backdrop-blur-xl border border-cyan-500/30 rounded-2xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+    <div className="relative w-full h-auto md:h-full md:min-h-[500px] bg-[#0F172A]/90 backdrop-blur-xl border border-cyan-500/30 rounded-2xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
       
       {/* Top Bar */}
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-emerald-400 to-cyan-500 animate-pulse" />
       
-      <div className="grid grid-cols-1 md:grid-cols-12 h-full p-8 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-12 h-auto md:h-full p-4 md:p-8 gap-5 md:gap-8">
         
-        {/* LEFT: Metrics (3 Cols on Desktop) */}
-        <div className="md:col-span-3 flex flex-col gap-4 h-full justify-between">
+        {/* LEFT: Metrics (Stacked on Mobile, Column on Desktop) */}
+        <div className="md:col-span-3 flex flex-col gap-3 md:gap-4 h-auto md:h-full md:justify-between shrink-0">
           <MetricCard 
             label="AVG RESPONSE"
             value="0.4s"
@@ -138,9 +138,9 @@ const LiveDashboard: React.FC = () => {
           />
         </div>
 
-        {/* CENTER: System Logs (5 Cols on Desktop - Widened) */}
-        <div className="md:col-span-5 flex flex-col bg-[#0A0F1E] border border-cyan-500/20 rounded-xl overflow-hidden h-full">
-          <div className="px-4 py-3 bg-slate-900/50 border-b border-cyan-500/10 flex justify-between items-center">
+        {/* CENTER: System Logs (Scrollable, Fixed height on mobile) */}
+        <div className="md:col-span-5 flex flex-col bg-[#0A0F1E] border border-cyan-500/20 rounded-xl overflow-hidden h-[300px] md:h-full">
+          <div className="px-4 py-3 bg-slate-900/50 border-b border-cyan-500/10 flex justify-between items-center shrink-0">
             <span className="text-[10px] font-mono uppercase text-slate-400 tracking-widest"> &gt; SYSTEM LOGS</span>
             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
           </div>
@@ -158,8 +158,8 @@ const LiveDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* RIGHT: Graph (4 Cols on Desktop) */}
-        <div className="md:col-span-4 flex flex-col bg-cyan-500/5 border border-cyan-500/20 rounded-xl p-6 relative overflow-hidden h-full">
+        {/* RIGHT: Graph (Fixed height on mobile) */}
+        <div className="md:col-span-4 flex flex-col bg-cyan-500/5 border border-cyan-500/20 rounded-xl p-6 relative overflow-hidden h-[250px] md:h-full">
           <div className="flex justify-between items-end mb-4 relative z-10">
             <div>
               <div className="text-[10px] font-mono uppercase text-slate-400 mb-1"> &gt; LEAD VOLUME (24H)</div>
@@ -168,7 +168,7 @@ const LiveDashboard: React.FC = () => {
           </div>
 
           {/* Chart Area */}
-          <div className="flex-1 w-full relative min-h-[150px]">
+          <div className="flex-1 w-full relative min-h-[100px]">
             <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">

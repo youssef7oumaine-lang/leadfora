@@ -167,7 +167,7 @@ const SolutionSection: React.FC<SolutionSectionProps> = ({ onOpenModal }) => {
         </div>
 
         <div className="flex flex-col gap-20">
-          <div className="w-full relative h-full min-h-[500px]">
+          <div className="w-full relative h-auto md:h-full min-h-[500px]">
              <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-2xl opacity-20 blur-lg"></div>
              <LiveDashboard />
           </div>
