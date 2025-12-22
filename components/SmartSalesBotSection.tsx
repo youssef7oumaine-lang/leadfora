@@ -366,8 +366,8 @@ const SmartSalesBotSection: React.FC<SmartSalesBotSectionProps> = ({ onOpenModal
         
         {/* Headlines */}
         <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          initial={isMobile ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+          whileInView={isMobile ? undefined : { opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
           className="text-center mb-16 md:mb-24 w-full max-w-6xl"
@@ -383,8 +383,8 @@ const SmartSalesBotSection: React.FC<SmartSalesBotSectionProps> = ({ onOpenModal
         {/* --- 3-CARD DECK ANIMATION --- */}
         <motion.div 
           className="w-full mb-16 md:mb-24 h-[400px] md:h-[500px] relative flex justify-center items-center"
-          initial={{ y: 20, opacity: 0 }}
-          whileInView={{ y: 0, opacity: 1 }}
+          initial={isMobile ? { opacity: 1, y: 0 } : { y: 20, opacity: 0 }}
+          whileInView={isMobile ? undefined : { y: 0, opacity: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
         >
@@ -397,8 +397,8 @@ const SmartSalesBotSection: React.FC<SmartSalesBotSectionProps> = ({ onOpenModal
             {/* 1. WhatsApp Card (Left/Behind) */}
             <motion.div
               className="absolute top-0 left-0 w-full h-full z-10"
-              initial={{ x: 0, rotate: 0, scale: 0.9, opacity: 0 }}
-              whileInView={{ x: -spread, rotate: -rotate, scale: 0.9, opacity: 1 }}
+              initial={isMobile ? { x: -spread, rotate: -rotate, scale: 0.9, opacity: 1 } : { x: 0, rotate: 0, scale: 0.9, opacity: 0 }}
+              whileInView={isMobile ? undefined : { x: -spread, rotate: -rotate, scale: 0.9, opacity: 1 }}
               viewport={{ once: true }}
               transition={{ type: "spring", stiffness: 60, damping: 20, delay: 0.2 }}
               style={{ transformOrigin: "bottom right" }}
@@ -409,8 +409,8 @@ const SmartSalesBotSection: React.FC<SmartSalesBotSectionProps> = ({ onOpenModal
             {/* 2. Instagram Card (Right/Behind) */}
             <motion.div
               className="absolute top-0 right-0 w-full h-full z-10"
-              initial={{ x: 0, rotate: 0, scale: 0.9, opacity: 0 }}
-              whileInView={{ x: spread, rotate: rotate, scale: 0.9, opacity: 1 }}
+              initial={isMobile ? { x: spread, rotate: rotate, scale: 0.9, opacity: 1 } : { x: 0, rotate: 0, scale: 0.9, opacity: 0 }}
+              whileInView={isMobile ? undefined : { x: spread, rotate: rotate, scale: 0.9, opacity: 1 }}
               viewport={{ once: true }}
               transition={{ type: "spring", stiffness: 60, damping: 20, delay: 0.2 }}
               style={{ transformOrigin: "bottom left" }}
@@ -421,8 +421,8 @@ const SmartSalesBotSection: React.FC<SmartSalesBotSectionProps> = ({ onOpenModal
             {/* 3. Main Web Chat Card (Center/Front) */}
             <motion.div
                className="absolute top-0 left-0 w-full h-full z-30"
-               initial={{ scale: 0.95, opacity: 0 }}
-               whileInView={{ scale: 1, opacity: 1 }}
+               initial={isMobile ? { scale: 1, opacity: 1 } : { scale: 0.95, opacity: 0 }}
+               whileInView={isMobile ? undefined : { scale: 1, opacity: 1 }}
                viewport={{ once: true }}
                transition={{ duration: 0.6 }}
             >
@@ -438,8 +438,8 @@ const SmartSalesBotSection: React.FC<SmartSalesBotSectionProps> = ({ onOpenModal
 
         {/* CTA Button */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          initial={isMobile ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+          whileInView={isMobile ? undefined : { opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, delay: 0.4 }}
         >

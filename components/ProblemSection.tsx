@@ -45,7 +45,12 @@ const useCounter = (end: number, duration: number = 2000, start: boolean) => {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    if (!start) return;
+    if (!start) {
+      // If we start visible (mobile), set to end immediately or animate?
+      // User requested "visible immediately", but counter animation is nice.
+      // We'll keep counter animation logic, but triggers immediately if start is true.
+      return; 
+    } 
     let startTime: number | null = null;
     const step = (timestamp: number) => {
       if (!startTime) startTime = timestamp;
@@ -176,11 +181,22 @@ const StatCard: React.FC<StatCardProps> = ({ item, index, isVisible, numberValue
 
 const ProblemSection: React.FC<ProblemSectionProps> = ({ onOpenModal }) => {
   const sectionRef = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
+  
+  // Initialize visibility state based on screen size (Mobile = visible immediately)
+  const [isVisible, setIsVisible] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
+
   const liveLoss = useLiveLossCounter();
   const { t, isRTL } = useTranslation();
 
   useEffect(() => {
+    // If already visible (e.g. mobile default), skip observer
+    if (isVisible) return;
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -194,7 +210,7 @@ const ProblemSection: React.FC<ProblemSectionProps> = ({ onOpenModal }) => {
       observer.observe(sectionRef.current);
     }
     return () => observer.disconnect();
-  }, []);
+  }, [isVisible]);
 
   const icons = [
       (

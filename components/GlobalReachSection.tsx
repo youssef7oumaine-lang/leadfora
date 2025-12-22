@@ -58,10 +58,21 @@ const languagesRow2 = [
 
 const GlobalReachSection: React.FC<GlobalReachSectionProps> = ({ onOpenModal }) => {
   const sectionRef = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
+  
+  // Initialize visibility state based on screen size (Mobile = visible immediately)
+  const [isVisible, setIsVisible] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
+
   const { t, isRTL } = useTranslation();
 
   useEffect(() => {
+    // If already visible (e.g. mobile default), skip observer
+    if (isVisible) return;
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -75,7 +86,7 @@ const GlobalReachSection: React.FC<GlobalReachSectionProps> = ({ onOpenModal }) 
       observer.observe(sectionRef.current);
     }
     return () => observer.disconnect();
-  }, []);
+  }, [isVisible]);
 
   return (
     <section 

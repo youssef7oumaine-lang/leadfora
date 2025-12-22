@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -14,6 +15,12 @@ const CheckIcon = () => (
 
 const PricingSection: React.FC<PricingSectionProps> = ({ onOpenModal }) => {
   const [showTip, setShowTip] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
 
   // Show tip after 2 seconds
   useEffect(() => {
@@ -21,6 +28,12 @@ const PricingSection: React.FC<PricingSectionProps> = ({ onOpenModal }) => {
       setShowTip(true);
     }, 2000);
     return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
   const handleFeatureClick = (feature: string) => {
@@ -53,8 +66,8 @@ const PricingSection: React.FC<PricingSectionProps> = ({ onOpenModal }) => {
                 CARD 1: STARTER 
                ========================================== */}
             <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                initial={isMobile ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+                whileInView={isMobile ? undefined : { opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5 }}
                 className="w-full flex flex-col bg-white border border-slate-200 rounded-2xl p-8 md:p-10 shadow-xl shadow-slate-200/50 hover:-translate-y-1 transition-all duration-300"
@@ -116,8 +129,8 @@ const PricingSection: React.FC<PricingSectionProps> = ({ onOpenModal }) => {
                 CARD 2: GROWTH (HERO)
                ========================================== */}
             <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                initial={isMobile ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+                whileInView={isMobile ? undefined : { opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: 0.1 }}
                 className="w-full flex flex-col bg-white relative rounded-2xl p-8 md:p-10 shadow-2xl shadow-cyan-900/10 hover:-translate-y-1 transition-transform duration-300 lg:scale-105 z-10 border border-cyan-500/30"
@@ -186,8 +199,8 @@ const PricingSection: React.FC<PricingSectionProps> = ({ onOpenModal }) => {
                 CARD 3: ENTERPRISE (VIP)
                ========================================== */}
             <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                initial={isMobile ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+                whileInView={isMobile ? undefined : { opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: 0.2 }}
                 className="w-full flex flex-col bg-slate-900 rounded-2xl p-8 md:p-10 shadow-2xl hover:-translate-y-1 transition-all duration-300 border border-white/10"
