@@ -90,7 +90,7 @@ const LeadCaptureModal: React.FC<LeadCaptureModalProps> = ({ isOpen, onClose }) 
       // Attempt to send data to webhook
       // Note: We swallow errors here to ensure the demo flow completes successfully 
       // even if the demo webhook URL is offline or unreachable.
-      await fetch('https://mistakable-danyell-limpidly.ngrok-free.dev/webhook/gggdcdsc', {
+      await fetch('https://n8n.srv1214325.hstgr.cloud/webhook/1', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
