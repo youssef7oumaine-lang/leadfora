@@ -118,24 +118,24 @@ const GlobalReachSection: React.FC<GlobalReachSectionProps> = ({ onOpenModal }) 
           ))}
         </div>
 
-        <div className="relative py-10 space-y-6">
-           <div className="absolute left-0 top-0 bottom-0 w-20 md:w-40 bg-gradient-to-r from-[#F8FAFC] to-transparent z-20 pointer-events-none" />
-           <div className="absolute right-0 top-0 bottom-0 w-20 md:w-40 bg-gradient-to-l from-[#F8FAFC] to-transparent z-20 pointer-events-none" />
+        <div className="relative py-6 md:py-10 space-y-4 md:space-y-6">
+           <div className="absolute left-0 top-0 bottom-0 w-12 md:w-40 bg-gradient-to-r from-[#F8FAFC] to-transparent z-20 pointer-events-none" />
+           <div className="absolute right-0 top-0 bottom-0 w-12 md:w-40 bg-gradient-to-l from-[#F8FAFC] to-transparent z-20 pointer-events-none" />
 
            {/* Row 1 - Forced LTR to fix RTL scroll bug */}
            <div className="marquee-row overflow-hidden w-full" dir="ltr">
-             <div className="marquee-inner flex gap-6 w-max animate-scroll-left py-2">
+             <div className="marquee-inner flex gap-3 md:gap-6 w-max animate-scroll-left py-2">
                {[...languagesRow1, ...languagesRow1, ...languagesRow1].map((lang, idx) => (
                  <div 
                    key={`r1-${idx}`}
-                   className="group flex flex-col items-center justify-center w-[160px] h-[120px] bg-white/60 backdrop-blur-md border border-cyan-500/20 rounded-2xl shadow-sm hover:shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:scale-105 hover:bg-white hover:border-cyan-500/50 transition-all duration-300 cursor-default"
+                   className="group flex flex-col items-center justify-center w-[110px] h-[90px] md:w-[160px] md:h-[120px] bg-white/60 backdrop-blur-md border border-cyan-500/20 rounded-2xl shadow-sm hover:shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:scale-105 hover:bg-white hover:border-cyan-500/50 transition-all duration-300 cursor-default shrink-0"
                  >
                    <img 
                      src={`https://flagcdn.com/w80/${lang.flagCode}.png`}
                      alt={lang.name}
-                     className="w-12 h-12 rounded-full object-cover shadow-md mb-3 group-hover:scale-110 transition-transform duration-300"
+                     className="w-8 h-8 md:w-12 md:h-12 rounded-full object-cover shadow-md mb-2 md:mb-3 group-hover:scale-110 transition-transform duration-300"
                    />
-                   <span className="text-xs font-bold text-slate-700 font-mono uppercase tracking-wide">{lang.name}</span>
+                   <span className="text-[10px] md:text-xs font-bold text-slate-700 font-mono uppercase tracking-wide text-center px-1">{lang.name}</span>
                  </div>
                ))}
              </div>
@@ -143,18 +143,18 @@ const GlobalReachSection: React.FC<GlobalReachSectionProps> = ({ onOpenModal }) 
 
            {/* Row 2 - Forced LTR to fix RTL scroll bug */}
            <div className="marquee-row overflow-hidden w-full" dir="ltr">
-             <div className="marquee-inner flex gap-6 w-max animate-scroll-right py-2">
+             <div className="marquee-inner flex gap-3 md:gap-6 w-max animate-scroll-right py-2">
                {[...languagesRow2, ...languagesRow2, ...languagesRow2].map((lang, idx) => (
                  <div 
                    key={`r2-${idx}`}
-                   className="group flex flex-col items-center justify-center w-[160px] h-[120px] bg-white/60 backdrop-blur-md border border-cyan-500/20 rounded-2xl shadow-sm hover:shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:scale-105 hover:bg-white hover:border-cyan-500/50 transition-all duration-300 cursor-default"
+                   className="group flex flex-col items-center justify-center w-[110px] h-[90px] md:w-[160px] md:h-[120px] bg-white/60 backdrop-blur-md border border-cyan-500/20 rounded-2xl shadow-sm hover:shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:scale-105 hover:bg-white hover:border-cyan-500/50 transition-all duration-300 cursor-default shrink-0"
                  >
                    <img 
                      src={`https://flagcdn.com/w80/${lang.flagCode}.png`}
                      alt={lang.name}
-                     className="w-12 h-12 rounded-full object-cover shadow-md mb-3 group-hover:scale-110 transition-transform duration-300"
+                     className="w-8 h-8 md:w-12 md:h-12 rounded-full object-cover shadow-md mb-2 md:mb-3 group-hover:scale-110 transition-transform duration-300"
                    />
-                   <span className="text-xs font-bold text-slate-700 font-mono uppercase tracking-wide">{lang.name}</span>
+                   <span className="text-[10px] md:text-xs font-bold text-slate-700 font-mono uppercase tracking-wide text-center px-1">{lang.name}</span>
                  </div>
                ))}
              </div>
@@ -162,7 +162,7 @@ const GlobalReachSection: React.FC<GlobalReachSectionProps> = ({ onOpenModal }) 
         </div>
 
         <div 
-          className={`text-center mt-16 transition-all duration-1000 delay-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
+          className={`text-center mt-12 md:mt-16 transition-all duration-1000 delay-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
         >
            <p className="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed font-medium">
              {t.global.bottom_text}
