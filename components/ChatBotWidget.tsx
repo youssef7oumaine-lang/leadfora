@@ -5,7 +5,7 @@ import React, { useState, useRef, useEffect } from 'react';
 // CONFIGURATION
 // ------------------------------------------------------------------
 
-const N8N_WEBHOOK_URL = "https://mistakable-danyell-limpidly.ngrok-free.dev/webhook/bf6e738c-d7a3-4dab-b740-65891b859949/chat";
+const N8N_WEBHOOK_URL = "https://n8n.srv1214325.hstgr.cloud/webhook/bf6e738c-d7a3-4dab-b740-65891b859949/chat";
 
 const SUGGESTIONS = [
   { label: "💸 Price?", text: "How much does Wolfz AI cost?" },
