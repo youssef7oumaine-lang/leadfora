@@ -275,14 +275,22 @@ const SmartSalesBotSection: React.FC<SmartSalesBotSectionProps> = ({ onOpenModal
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [showBadge, setShowBadge] = useState(false);
-  const [isMobile, setIsMobile] = useState(false); // To handle responsive layout
+  
+  // Initialize with safe check for window to prevent SSR/Hydration mismatch if used in SSR framework
+  // For standard React SPA, this is safe and prevents initial "jump" from desktop default.
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
   
   const isMounted = useRef(true);
 
   // --- Responsive Check ---
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
+    // Initial check is already done in state initializer
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
@@ -329,9 +337,9 @@ const SmartSalesBotSection: React.FC<SmartSalesBotSectionProps> = ({ onOpenModal
   }, [t.salesBot]);
 
   // Animation values based on screen size
-  // Mobile: tight (30px), Desktop: wide (150px for compact fan)
-  const spread = isMobile ? 30 : 150;
-  const rotate = isMobile ? 6 : 12;
+  // Refined for smoother, subtler movement
+  const spread = isMobile ? 25 : 140; 
+  const rotate = isMobile ? 4 : 8;
 
   // Helper function to bold 'AI Sales Chatbot' in text
   const formatSubheadline = (text: string) => {
@@ -380,10 +388,10 @@ const SmartSalesBotSection: React.FC<SmartSalesBotSectionProps> = ({ onOpenModal
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
         >
-          {/* Float Animation Wrapper */}
+          {/* Float Animation Wrapper - Slower, subtler breathing */}
           <motion.div
             className="relative w-[90%] md:w-full max-w-[320px] md:max-w-sm h-full mx-auto"
-            animate={{ y: [0, -15, 0] }}
+            animate={{ y: [0, -10, 0] }}
             transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
           >
             {/* 1. WhatsApp Card (Left/Behind) */}
@@ -392,7 +400,7 @@ const SmartSalesBotSection: React.FC<SmartSalesBotSectionProps> = ({ onOpenModal
               initial={{ x: 0, rotate: 0, scale: 0.9, opacity: 0 }}
               whileInView={{ x: -spread, rotate: -rotate, scale: 0.9, opacity: 1 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.8, delay: 0.2, type: "spring" }}
+              transition={{ type: "spring", stiffness: 60, damping: 20, delay: 0.2 }}
               style={{ transformOrigin: "bottom right" }}
             >
                <WhatsAppCard />
@@ -404,7 +412,7 @@ const SmartSalesBotSection: React.FC<SmartSalesBotSectionProps> = ({ onOpenModal
               initial={{ x: 0, rotate: 0, scale: 0.9, opacity: 0 }}
               whileInView={{ x: spread, rotate: rotate, scale: 0.9, opacity: 1 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.8, delay: 0.2, type: "spring" }}
+              transition={{ type: "spring", stiffness: 60, damping: 20, delay: 0.2 }}
               style={{ transformOrigin: "bottom left" }}
             >
               <InstagramCard />
