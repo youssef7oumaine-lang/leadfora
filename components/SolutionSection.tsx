@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import LiveDashboard from './LiveDashboard';
 import { useTranslation } from '../LanguageContext';
+import { motion } from 'framer-motion';
 
 interface SolutionSectionProps {
   onOpenModal: () => void;
@@ -177,10 +178,16 @@ const SolutionSection: React.FC<SolutionSectionProps> = ({ onOpenModal }) => {
         </div>
 
         <div className="flex flex-col gap-20">
-          <div className="w-full relative h-auto md:h-full min-h-[500px]">
+          <motion.div 
+            className="w-full relative h-auto md:h-full min-h-[500px]"
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "0px 0px -40% 0px" }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+          >
              <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-2xl opacity-20 blur-lg"></div>
              <LiveDashboard />
-          </div>
+          </motion.div>
 
           <div className="w-full pt-4">
             <h3 className="text-2xl font-bold text-slate-900 mb-8">{t.solution.comparison_title}</h3>

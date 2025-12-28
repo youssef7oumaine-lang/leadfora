@@ -108,12 +108,19 @@ const LiveDashboard: React.FC = () => {
   }).join(' ');
 
   return (
-    <div className="relative w-full h-auto md:h-full md:min-h-[500px] bg-[#0F172A]/90 backdrop-blur-xl border border-cyan-500/30 rounded-2xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+    <div 
+      className="relative w-full max-w-[100vw] h-auto min-h-[600px] md:h-full md:min-h-[500px] bg-[#0F172A]/90 backdrop-blur-xl border border-cyan-500/30 rounded-2xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.3)] transform-gpu"
+      style={{
+        transform: 'translateZ(0)',
+        backfaceVisibility: 'hidden',
+        WebkitFontSmoothing: 'subpixel-antialiased'
+      }}
+    >
       
       {/* Top Bar */}
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-emerald-400 to-cyan-500 animate-pulse" />
       
-      <div className="grid grid-cols-1 md:grid-cols-12 h-auto md:h-full p-4 md:p-8 gap-5 md:gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-12 h-full p-4 md:p-8 gap-5 md:gap-8">
         
         {/* LEFT: Metrics (Stacked on Mobile, Column on Desktop) */}
         <div className="md:col-span-3 flex flex-col gap-3 md:gap-4 h-auto md:h-full md:justify-between shrink-0">
