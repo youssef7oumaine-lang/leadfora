@@ -1,261 +1,227 @@
-import React, { useEffect, useRef } from 'react';
+
+import React, { useRef } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { MeshDistortMaterial, Sphere, Environment, Float } from '@react-three/drei';
+import * as THREE from 'three';
 import { useTranslation } from '../LanguageContext';
 
 interface HeroSectionProps {
   onOpenModal: () => void;
 }
 
+// --- 3D COMPONENT: LIQUID SPHERE (CENTERED AI CORE) ---
+
+const LiquidSphere = () => {
+  const mainRef = useRef<THREE.Mesh>(null);
+  const dropletRef = useRef<THREE.Mesh>(null);
+  
+  const mainMatRef = useRef<any>(null);
+  const dropletMatRef = useRef<any>(null);
+
+  useFrame((state) => {
+    const { x, y } = state.pointer; // Mouse coordinates normalized (-1 to 1)
+    
+    // Calculate distance from center for material intensity
+    const dist = Math.sqrt(x * x + y * y);
+    
+    // --- MATERIAL ANIMATION (High Viscosity / Mercury) ---
+    // Base distort kept high for "softer" feel. 
+    // Mouse influence kept high for "aggressive" reaction.
+    const targetDistort = 0.4 + (dist * 0.4); 
+    
+    // Speed increased by 20% (0.6 base). 
+    const targetSpeed = 0.6 + (dist * 0.3);   
+
+    if (mainMatRef.current) {
+      mainMatRef.current.distort = THREE.MathUtils.lerp(mainMatRef.current.distort, targetDistort, 0.05);
+      mainMatRef.current.speed = THREE.MathUtils.lerp(mainMatRef.current.speed, targetSpeed, 0.05);
+    }
+    
+    if (dropletMatRef.current) {
+      dropletMatRef.current.distort = THREE.MathUtils.lerp(dropletMatRef.current.distort, targetDistort * 1.2, 0.06);
+      dropletMatRef.current.speed = THREE.MathUtils.lerp(dropletMatRef.current.speed, targetSpeed * 1.2, 0.06);
+    }
+
+    // --- PARALLAX & MOVEMENT (Aggressive Magnetic Flow) ---
+    
+    if (mainRef.current && dropletRef.current) {
+      // MAIN SPHERE:
+      // Rotation: Increased tilt sensitivity
+      mainRef.current.rotation.x = THREE.MathUtils.lerp(mainRef.current.rotation.x, -y * 0.5, 0.08);
+      mainRef.current.rotation.y = THREE.MathUtils.lerp(mainRef.current.rotation.y, x * 0.5, 0.08);
+      
+      // Position: Aggressive "Magnetic" Pull towards cursor
+      mainRef.current.position.x = THREE.MathUtils.lerp(mainRef.current.position.x, x * 0.3, 0.08);
+      mainRef.current.position.y = THREE.MathUtils.lerp(mainRef.current.position.y, y * 0.3, 0.08);
+      
+      // DROPLET SPHERE:
+      // Follows loosely
+      dropletRef.current.position.x = THREE.MathUtils.lerp(dropletRef.current.position.x, x * 0.6, 0.1);
+      dropletRef.current.position.y = THREE.MathUtils.lerp(dropletRef.current.position.y, y * 0.6, 0.1);
+    }
+  });
+
+  return (
+    <Float 
+      speed={2.0} // Increased float speed for organic feel
+      rotationIntensity={0.4} 
+      floatIntensity={0.4} 
+    >
+      <group>
+        {/* MAIN CORE SPHERE */}
+        <Sphere 
+          args={[1, 256, 256]} 
+          scale={1.45} 
+          ref={mainRef}
+        >
+          <MeshDistortMaterial
+            ref={mainMatRef}
+            color="#ffffff" 
+            roughness={0} 
+            metalness={1.0} 
+            envMapIntensity={3.0} // Brighter reflections
+            distort={0.4} 
+            speed={0.6} 
+            radius={1}
+          />
+        </Sphere>
+
+        {/* DROPLET SPHERE */}
+        <Sphere args={[1, 128, 128]} scale={0.4} ref={dropletRef}>
+          <MeshDistortMaterial
+            ref={dropletMatRef}
+            color="#ffffff" 
+            roughness={0} 
+            metalness={1.0}
+            envMapIntensity={3.0} 
+            distort={0.45} 
+            speed={0.7} 
+            radius={1}
+          />
+        </Sphere>
+      </group>
+    </Float>
+  );
+};
+
+// --- HERO SECTION ---
+
 const HeroSection: React.FC<HeroSectionProps> = ({ onOpenModal }) => {
   const { t, isRTL } = useTranslation();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  // Split the headline by newline character to ensure exactly two lines based on translation
   const headlines = t.hero.headline.split('\n');
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d', { alpha: false });
-    if (!ctx) return;
-
-    // State variables for the ripple effect
-    let width = 0;
-    let height = 0;
-    let rippleMap: Int32Array | null = null;
-    let lastMap: Int32Array | null = null;
-    let imageData: ImageData | null = null;
-    let animationFrameId: number;
-    let isDestroyed = false;
-
-    // Gradient Configuration (Light Gray/Bluish)
-    // Top: #F8FAFC (248, 250, 252)
-    // Bottom: #E2E8F0 (226, 232, 240)
-    const startColor = { r: 248, g: 250, b: 252 };
-    const endColor = { r: 226, g: 232, b: 240 };
-
-    const init = () => {
-      if (isDestroyed) return;
-      
-      // Use offset sizes to match DOM exactly to avoid scaling artifacts
-      width = canvas.offsetWidth;
-      height = canvas.offsetHeight;
-
-      // Prevent buffer creation errors if size is 0
-      if (width === 0 || height === 0) return;
-
-      canvas.width = width;
-      canvas.height = height;
-
-      const size = width * height;
-      rippleMap = new Int32Array(size);
-      lastMap = new Int32Array(size);
-      imageData = ctx.createImageData(width, height);
-    };
-
-    const disturb = (x: number, y: number) => {
-      if (!width || !height || !rippleMap) return;
-      
-      // Boundary checks to avoid index out of bounds
-      if (x < 2 || x >= width - 2 || y < 2 || y >= height - 2) return;
-
-      const disturbance = 400; // Ripple strength
-      const radius = 3;        // Ripple radius
-
-      for (let j = y - radius; j <= y + radius; j++) {
-        for (let i = x - radius; i <= x + radius; i++) {
-          const idx = (j * width) + i;
-          // Safe buffer access
-          if (idx >= 0 && idx < rippleMap.length) {
-            rippleMap[idx] += disturbance;
-          }
-        }
-      }
-    };
-
-    const render = () => {
-      if (isDestroyed) return;
-      animationFrameId = requestAnimationFrame(render);
-
-      // Strict check to prevent "Uncaught" errors during resize or init
-      if (!width || !height || !rippleMap || !lastMap || !imageData) return;
-
-      const data = imageData.data;
-      const rMap = rippleMap;
-      const lMap = lastMap;
-
-      // Calculate Gradient Deltas once per frame
-      const dR = endColor.r - startColor.r;
-      const dG = endColor.g - startColor.g;
-      const dB = endColor.b - startColor.b;
-
-      let mapInd = width; // Start at second row
-      
-      // Loop through all pixels (skipping 1px edge to avoid boundary checks)
-      for (let y = 1; y < height - 1; y++) {
-        
-        // Calculate base gradient color for this specific row (Vertical Gradient)
-        const rowFactor = y / height;
-        const baseR = startColor.r + (dR * rowFactor);
-        const baseG = startColor.g + (dG * rowFactor);
-        const baseB = startColor.b + (dB * rowFactor);
-
-        for (let x = 1; x < width - 1; x++) {
-          // Water Ripple Algorithm
-          // New Height = (Average of 4 neighbors) - Previous Height
-          const nextHeight = (
-            (rMap[mapInd - 1] + 
-             rMap[mapInd + 1] + 
-             rMap[mapInd - width] + 
-             rMap[mapInd + width]) >> 1
-          ) - lMap[mapInd];
-
-          // Damping (Energy Loss) - Equivalent to val * 0.968
-          const val = nextHeight - (nextHeight >> 5);
-          
-          // Store result in the "Current" buffer (which becomes "Last" next frame)
-          lMap[mapInd] = val;
-
-          // Render Logic: Apply shading based on ripple height
-          // "val" is the height. Positive = peak (lighter), Negative = trough (darker)
-          const highlight = val >> 4; 
-
-          let r = baseR + highlight;
-          let g = baseG + highlight;
-          let b = baseB + highlight;
-
-          // Fast Clamping
-          if (r > 255) r = 255; else if (r < 0) r = 0;
-          if (g > 255) g = 255; else if (g < 0) g = 0;
-          if (b > 255) b = 255; else if (b < 0) b = 0;
-
-          // Write to Pixel Buffer
-          const pixelInd = mapInd << 2; // multiply by 4
-          data[pixelInd] = r;
-          data[pixelInd + 1] = g;
-          data[pixelInd + 2] = b;
-          data[pixelInd + 3] = 255; // Alpha
-
-          mapInd++;
-        }
-        mapInd += 2; // Skip edge pixels (left and right)
-      }
-
-      // Swap buffers for next frame
-      rippleMap = lMap;
-      lastMap = rMap;
-
-      ctx.putImageData(imageData, 0, 0);
-    };
-
-    // Event Handlers
-    const handleMove = (e: MouseEvent | TouchEvent) => {
-      // Guard clause
-      if (!canvas) return;
-
-      const rect = canvas.getBoundingClientRect();
-      let clientX, clientY;
-      
-      if ('touches' in e) {
-        clientX = e.touches[0].clientX;
-        clientY = e.touches[0].clientY;
-      } else {
-        clientX = (e as MouseEvent).clientX;
-        clientY = (e as MouseEvent).clientY;
-      }
-
-      disturb(Math.floor(clientX - rect.left), Math.floor(clientY - rect.top));
-    };
-
-    // Start
-    init();
-    render();
-
-    // Listeners
-    window.addEventListener('resize', init);
-    canvas.addEventListener('mousemove', handleMove);
-    canvas.addEventListener('touchmove', handleMove, { passive: true });
-
-    // Cleanup
-    return () => {
-      isDestroyed = true;
-      cancelAnimationFrame(animationFrameId);
-      window.removeEventListener('resize', init);
-      if (canvas) {
-        canvas.removeEventListener('mousemove', handleMove);
-        canvas.removeEventListener('touchmove', handleMove);
-      }
-    };
-  }, []);
+  // Common button styles for uniformity
+  const buttonBaseClass = "w-full md:w-auto md:min-w-[260px] px-8 py-2.5 rounded-full font-bold text-white text-lg capitalize transition-all duration-300 hover:scale-105 hover:brightness-110 focus:outline-none shadow-[0_0_20px_rgba(0,255,65,0.3)] hover:shadow-[0_0_30px_rgba(0,255,65,0.4)]";
+  const gradientStyle = { background: 'linear-gradient(90deg, #00D9FF 0%, #00FF41 100%)' };
 
   return (
     <section 
-      className="relative w-full h-screen min-h-[600px] flex flex-col items-center justify-center overflow-hidden pt-20"
+      className="relative w-full h-screen min-h-[700px] flex flex-col items-center justify-center overflow-hidden bg-[#F8FAFC]"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
-      {/* Interactive Water Ripple Background (Z-0) */}
-      <canvas 
-        ref={canvasRef}
-        className="absolute inset-0 z-0 w-full h-full block cursor-crosshair"
-        style={{
-          // Fallback gradient while loading JS
-          background: 'linear-gradient(to bottom, #F8FAFC 0%, #E2E8F0 100%)' 
-        }}
-      />
-
-      {/* Content Overlay (Z-10, Pointer-Events-None to let clicks pass to canvas) */}
-      <div className="relative z-10 flex flex-col items-center text-center px-4 w-full max-w-6xl mt-12 -translate-y-14 space-y-8 pointer-events-none">
+      {/* 3D Liquid Background */}
+      <div className="absolute inset-0 z-0">
+        <Canvas
+          camera={{ position: [0, 0, 6], fov: 45 }}
+          dpr={[1, 2]} // Handle high-DPI
+          gl={{ antialias: true, alpha: true }} 
+        >
+          {/* 
+             Using 'city' preset for a stable, high-quality urban reflection.
+             This ensures the sphere looks like liquid chrome reflecting a skyline.
+          */}
+          <Environment preset="city" />
+          
+          {/* Lighting setup to enhance the 3D depth - Boosted for high exposure */}
+          <ambientLight intensity={1.5} />
+          <directionalLight position={[10, 10, 5]} intensity={2.0} />
+          <pointLight position={[-10, -10, -5]} intensity={1.0} color="#00D9FF" />
+          
+          <LiquidSphere />
+        </Canvas>
         
-        {/* Tech Status Badge */}
-        <div className="pointer-events-auto">
-          <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-[#0F172A] border border-slate-800 shadow-xl transition-transform hover:scale-105 cursor-default">
+        {/* Subtle gradients to blend 3D canvas with 2D page */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#F8FAFC_85%)] pointer-events-none" />
+      </div>
+
+      {/* Content Overlay */}
+      <div className="relative z-10 flex flex-col items-center text-center px-4 w-full max-w-6xl mt-0 pointer-events-none">
+        
+        {/* Live Badge (Glassmorphism & Breathe Animation) */}
+        <div className="pointer-events-auto mb-12 animate-fade-in-up">
+          <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/40 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_rgba(31,38,135,0.07)] transition-all hover:scale-105 hover:bg-white/60 cursor-default">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
+              <span className="animate-breathe absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            <span className="text-[11px] font-bold text-white tracking-widest uppercase font-mono leading-none pt-0.5">
+            <span className="text-[10px] font-bold text-slate-600 tracking-[0.25em] uppercase font-mono leading-none pt-0.5 ml-0.5">
               WOLFZ AI ENGINE V2.0 LIVE
             </span>
           </div>
         </div>
 
-        <h1 className="font-bold text-slate-900 tracking-tight">
+        {/* Headline - "Apple-esque" Sizing (text-3xl to text-5xl) */}
+        <h1 
+          className="font-bold tracking-tight animate-fade-in-up mx-auto max-w-5xl" 
+          style={{ animationDelay: '0.1s' }}
+        >
           {headlines.map((line, index) => (
             <span 
               key={index} 
-              className={`block text-3xl md:text-5xl leading-tight ${index > 0 ? 'mt-2 md:mt-4' : ''}`}
+              className={`block text-3xl md:text-4xl lg:text-5xl text-black ${index > 0 ? 'mt-4' : ''}`}
+              style={{ 
+                // Very faint white halo to ensure black text is readable over liquid chrome
+                textShadow: '0 0 30px rgba(255,255,255,0.5)',
+                lineHeight: '1.4'
+              }}
             >
               {line}
             </span>
           ))}
         </h1>
 
-        {/* Buttons: Pointer-Events-Auto required for button to be clickable */}
-        <div className="pt-4 pointer-events-auto flex flex-col md:flex-row items-center gap-4 w-full justify-center">
-          {/* Button 1: Voice (Green Gradient) */}
+        {/* Buttons */}
+        <div className="pt-12 pointer-events-auto flex flex-col md:flex-row items-center gap-6 w-full justify-center animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
           <button
             onClick={onOpenModal}
-            className="w-full md:w-auto px-12 py-3 rounded-full font-bold text-white text-base transition-all duration-300 hover:scale-105 hover:brightness-125 focus:outline-none shadow-[0_0_25px_rgba(0,255,65,0.4)]"
-            style={{
-              background: 'linear-gradient(90deg, #00D9FF 0%, #00FF41 100%)',
-            }}
+            className={buttonBaseClass}
+            style={gradientStyle}
           >
-            Test Our AI Now
+            {t.hero.cta.toLowerCase()}
           </button>
 
-          {/* Button 2: Chat (Identical Style to Button 1) */}
           <button
             onClick={() => {
               const event = new CustomEvent('trigger-chat-input', { detail: { message: 'I want to try the demo' } });
               window.dispatchEvent(event);
             }}
-            className="w-full md:w-auto px-12 py-3 rounded-full font-bold text-white text-base transition-all duration-300 hover:scale-105 hover:brightness-125 focus:outline-none shadow-[0_0_25px_rgba(0,255,65,0.4)]"
-            style={{
-              background: 'linear-gradient(90deg, #00D9FF 0%, #00FF41 100%)',
-            }}
+            className={buttonBaseClass}
+            style={gradientStyle}
           >
             Try Chatbot Demo
           </button>
         </div>
       </div>
+      
+      <style>{`
+        @keyframes fade-in-up {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+          animation: fade-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          opacity: 0; /* Init hidden */
+        }
+        @keyframes breathe {
+          0%, 100% { opacity: 0.4; transform: scale(1); }
+          50% { opacity: 0.8; transform: scale(1.5); }
+        }
+        .animate-breathe {
+          animation: breathe 3s ease-in-out infinite;
+        }
+      `}</style>
     </section>
   );
 };
