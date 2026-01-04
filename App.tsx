@@ -62,7 +62,11 @@ const AppContent: React.FC = () => {
         <PricePage onOpenModal={handleOpenModal} />
       )}
       
-      <Footer />
+      <Footer 
+        onOpenModal={handleOpenModal} 
+        onToggleChat={toggleChat}
+        onNavigate={setCurrentPage}
+      />
       <ChatBotWidget 
         isOpen={isChatOpen}
         setIsOpen={setIsChatOpen}
